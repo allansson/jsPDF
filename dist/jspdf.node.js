@@ -1,7 +1,7 @@
 /** @license
  *
  * jsPDF - PDF Document creation from JavaScript
- * Version 2.2.0 Built on 2020-12-07T14:12:49.845Z
+ * Version 2.2.0 Built on 2020-12-15T09:54:07.884Z
  *                      CommitID 00000000
  *
  * Copyright (c) 2010-2020 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF
@@ -12153,7 +12153,7 @@ var AcroForm = jsPDF.AcroForm;
       headerLabels = headers.map(function(header) {
         return header.prompt || header.name || "";
       });
-      headerAligns = headerNames.map(function(header) {
+      headerAligns = headers.map(function(header) {
         return header.align || "left";
       });
       // Split header configs into names and prompts
@@ -12370,6 +12370,291 @@ var AcroForm = jsPDF.AcroForm;
     printingHeaderRow = false;
   };
 })(jsPDF.API);
+
+function toLookup(arr) {
+  return arr.reduce((lookup, name, index) => {
+    lookup[name] = index;
+
+    return lookup;
+  }, {});
+}
+
+var fontStyleOrder = {
+  italic: ["italic", "oblique", "normal"],
+  oblique: ["oblique", "italic", "normal"],
+  normal: ["normal", "oblique", "italic"]
+};
+
+var fontStretchOrder = [
+  "ultra-condensed",
+  "extra-condensed",
+  "condensed",
+  "semi-condensed",
+  "normal",
+  "semi-expanded",
+  "expanded",
+  "extra-expanded",
+  "ultra-expanded"
+];
+
+// For a given font-stretch value, we need to know where to start our search
+// from in the fontStretchOrder list.
+var fontStretchLookup = toLookup(fontStretchOrder);
+
+var fontWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+var fontWeightsLookup = toLookup(fontWeights);
+
+function normalizeFontStretch(stretch) {
+  stretch = stretch || "normal";
+
+  return typeof fontStretchLookup[stretch] === "number" ? stretch : "normal";
+}
+
+function normalizeFontStyle(style) {
+  style = style || "normal";
+
+  return fontStyleOrder[style] ? style : "normal";
+}
+
+function normalizeFontWeight(weight) {
+  if (!weight) {
+    return 400;
+  }
+
+  if (typeof weight === "number") {
+    // Ignore values which aren't valid font-weights.
+    return weight >= 100 && weight <= 900 && weight % 100 === 0 ? weight : 400;
+  }
+
+  if (/^\d00$/.test(weight)) {
+    return parseInt(weight);
+  }
+
+  switch (weight) {
+    case "bold":
+      return 700;
+
+    case "normal":
+    default:
+      return 400;
+  }
+}
+
+function normalizeFontFace(fontFace) {
+  var family = fontFace.family.replace(/"|'/g, "").toLowerCase();
+
+  var style = normalizeFontStyle(fontFace.style);
+  var weight = normalizeFontWeight(fontFace.weight);
+  var stretch = normalizeFontStretch(fontFace.stretch);
+
+  return {
+    family: family,
+    style: style,
+    weight: weight,
+    stretch: stretch,
+    src: fontFace.src || [],
+
+    // The ref property maps this font-face to the font
+    // added by the .addFont() method.
+    ref: fontFace.ref || {
+      name: family,
+      style: [stretch, style, weight].join(" ")
+    }
+  };
+}
+
+/**
+ * Turns a list of font-faces into a map, for easier lookup when resolving
+ * fonts.
+ * */
+function buildFontFaceMap(fontFaces) {
+  var map = {};
+
+  for (var i = 0; i < fontFaces.length; ++i) {
+    var normalized = normalizeFontFace(fontFaces[i]);
+
+    var name = normalized.family;
+    var stretch = normalized.stretch;
+    var style = normalized.style;
+    var weight = normalized.weight;
+
+    map[name] = map[name] || {};
+
+    map[name][stretch] = map[name][stretch] || {};
+    map[name][stretch][style] = map[name][stretch][style] || {};
+    map[name][stretch][style][weight] = normalized;
+  }
+
+  return map;
+}
+
+/**
+ * Searches a map of stretches, weights, etc. in the given direction and
+ * then, if no match has been found, in the opposite directions.
+ *
+ * @param {Object.<string, any>} matchingSet A map of the various font variations.
+ * @param {any[]} order The order of the different variations
+ * @param {number} pivot The starting point of the search in the order list.
+ * @param {-1 | 1} dir The initial direction of the search (desc = -1, asc = 1)
+ */
+
+function searchFromPivot(matchingSet, order, pivot, dir) {
+  var i;
+
+  for (i = pivot; i >= 0 && i < order.length; i += dir) {
+    if (matchingSet[order[i]]) {
+      return matchingSet[order[i]];
+    }
+  }
+
+  for (i = pivot; i >= 0 && i < order.length; i -= dir) {
+    if (matchingSet[order[i]]) {
+      return matchingSet[order[i]];
+    }
+  }
+}
+
+function resolveFontStretch(stretch, matchingSet) {
+  if (matchingSet[stretch]) {
+    return matchingSet[stretch];
+  }
+
+  var pivot = fontStretchLookup[stretch];
+
+  // If the font-stretch value is normal or more condensed, we want to
+  // start with a descending search, otherwise we should do ascending.
+  var dir = pivot <= fontStretchLookup["normal"] ? -1 : 1;
+  var match = searchFromPivot(matchingSet, fontStretchOrder, pivot, dir);
+
+  if (!match) {
+    // Since a font-family cannot exist without having at least one stretch value
+    // we should never reach this point.
+    throw new Error(
+      "Could not find a matching font-stretch value for " + stretch
+    );
+  }
+
+  return match;
+}
+
+function resolveFontStyle(fontStyle, matchingSet) {
+  if (matchingSet[fontStyle]) {
+    return matchingSet[fontStyle];
+  }
+
+  var ordering = fontStyleOrder[fontStyle];
+
+  for (var i = 0; i < ordering.length; ++i) {
+    if (matchingSet[ordering[i]]) {
+      return matchingSet[ordering[i]];
+    }
+  }
+
+  // Since a font-family cannot exist without having at least one style value
+  // we should never reach this point.
+  throw new Error("Could not find a matching font-style for " + fontStyle);
+}
+
+function resolveFontWeight(weight, matchingSet) {
+  if (matchingSet[weight]) {
+    return matchingSet[weight];
+  }
+
+  if (weight === 400 && matchingSet[500]) {
+    return matchingSet[500];
+  }
+
+  if (weight === 500 && matchingSet[400]) {
+    return matchingSet[400];
+  }
+
+  var pivot = fontWeightsLookup[weight];
+
+  // If the font-stretch value is normal or more condensed, we want to
+  // start with a descending search, otherwise we should do ascending.
+  var dir = weight < 400 ? -1 : 1;
+  var match = searchFromPivot(matchingSet, fontWeights, pivot, dir);
+
+  if (!match) {
+    // Since a font-family cannot exist without having at least one stretch value
+    // we should never reach this point.
+    throw new Error(
+      "Could not find a matching font-weight for value " + weight
+    );
+  }
+
+  return match;
+}
+
+var defaultGenericFontFamilies = {
+  "sans-serif": "helvetica",
+  fixed: "courier",
+  monospace: "courier",
+  terminal: "courier",
+  cursive: "times",
+  fantasy: "times",
+  serif: "times"
+};
+
+function ruleToString(rule) {
+  return [rule.stretch, rule.style, rule.weight, rule.family].join(" ");
+}
+
+function resolveFontFace(fontFaceMap, rules, opts) {
+  opts = opts || {};
+
+  var defaultFontFamily = opts.defaultFontFamily || "times";
+  var genericFontFamilies = Object.assign(
+    {},
+    defaultGenericFontFamilies,
+    opts.genericFontFamilies || {}
+  );
+
+  var rule = null;
+  var matches = null;
+
+  for (var i = 0; i < rules.length; ++i) {
+    rule = normalizeFontFace(rules[i]);
+
+    if (genericFontFamilies[rule.family]) {
+      rule.family = genericFontFamilies[rule.family];
+    }
+
+    if (fontFaceMap.hasOwnProperty(rule.family)) {
+      matches = fontFaceMap[rule.family];
+
+      break;
+    }
+  }
+
+  // Always fallback to a known font family.
+  matches = matches || fontFaceMap[defaultFontFamily];
+
+  if (!matches) {
+    // At this point we should definitiely have a font family, but if we
+    // don't there is something wrong with our configuration
+    throw new Error(
+      "Could not find a font-family for the rule '" +
+        ruleToString(rule) +
+        "' and default family '" +
+        defaultFontFamily +
+        "'."
+    );
+  }
+
+  matches = resolveFontStretch(rule.stretch, matches);
+  matches = resolveFontStyle(rule.style, matches);
+  matches = resolveFontWeight(rule.weight, matches);
+
+  if (!matches) {
+    // We should've fount
+    throw new Error(
+      "Failed to resolve a font for the rule '" + ruleToString(rule) + "'."
+    );
+  }
+
+  return matches;
+}
 
 /* eslint-disable no-fallthrough */
 
@@ -12758,12 +13043,101 @@ var AcroForm = jsPDF.AcroForm;
       }
     });
 
+    var _fontFaceMap = null;
+
+    function getFontFaceMap(pdf, fontFaces) {
+      if (_fontFaceMap === null) {
+        var fontMap = pdf.getFontList();
+
+        var convertedFontFaces = convertToFontFaces(fontMap);
+
+        _fontFaceMap = buildFontFaceMap(convertedFontFaces.concat(fontFaces));
+      }
+
+      return _fontFaceMap;
+    }
+
+    function convertToFontFaces(fontMap) {
+      var fontFaces = [];
+
+      Object.keys(fontMap).forEach(function(family) {
+        var styles = fontMap[family];
+
+        styles.forEach(function(style) {
+          var fontFace = null;
+
+          switch (style) {
+            case "bold":
+              fontFace = {
+                family: family,
+                weight: "bold"
+              };
+              break;
+
+            case "italic":
+              fontFace = {
+                family: family,
+                style: "italic"
+              };
+              break;
+
+            case "bolditalic":
+              fontFace = {
+                family: family,
+                weight: "bold",
+                style: "italic"
+              };
+              break;
+
+            case "":
+            case "normal":
+              fontFace = {
+                family: family
+              };
+              break;
+          }
+
+          // If font-face is still null here, it is a font with some styling we don't recognize and
+          // cannot map or it is a font added via the fontFaces option of .html().
+          if (fontFace !== null) {
+            fontFace.ref = {
+              name: family,
+              style: style
+            };
+
+            fontFaces.push(fontFace);
+          }
+        });
+      });
+
+      return fontFaces;
+    }
+
+    var _fontFaces = null;
+    /**
+     * A map of available font-faces, as passed in the options of
+     * .html(). If set a limited implementation of the font style matching
+     * algorithm defined by https://www.w3.org/TR/css-fonts-3/#font-matching-algorithm
+     * will be used. If not set it will fallback to previous behavior.
+     */
+
+    Object.defineProperty(this, "fontFaces", {
+      get: function() {
+        return _fontFaces;
+      },
+      set: function(value) {
+        _fontFaceMap = null;
+        _fontFaces = value;
+      }
+    });
+
     Object.defineProperty(this, "font", {
       get: function() {
         return this.ctx.font;
       },
       set: function(value) {
         this.ctx.font = value;
+        var jsPdfFontName = "";
         var rx, matches;
 
         //source: https://stackoverflow.com/a/10136041
@@ -12780,6 +13154,7 @@ var AcroForm = jsPDF.AcroForm;
         } else {
           return;
         }
+
         var rxFontSize = /^([.\d]+)((?:%|in|[cem]m|ex|p[ctx]))$/i;
         var fontSizeUnit = rxFontSize.exec(fontSize)[2];
 
@@ -12797,6 +13172,27 @@ var AcroForm = jsPDF.AcroForm;
 
         this.pdf.setFontSize(fontSize);
 
+        var parts = fontFamily.replace(/"|'/g, "").split(/\s*,\s*/);
+
+        if (this.fontFaces) {
+          var fontFaceMap = getFontFaceMap(this.pdf, this.fontFaces);
+
+          var rules = parts.map(ff => ({
+            family: ff,
+            stretch: "normal", // TODO: Extract font-stretch from font rule (perhaps write proper parser for it?)
+            weight: fontWeight,
+            style: fontStyle
+          }));
+
+          var font = resolveFontFace(fontFaceMap, rules);
+
+          // If the font is a standard font then we need to map the font-family
+          // to one of those fonts. Otherwise, we map it to one of the custom
+          // fonts.
+          this.pdf.setFont(font.ref.name, font.ref.style);
+          return;
+        }
+
         var style = "";
         if (
           fontWeight === "bold" ||
@@ -12813,10 +13209,6 @@ var AcroForm = jsPDF.AcroForm;
         if (style.length === 0) {
           style = "normal";
         }
-
-        var jsPdfFontName = "";
-        var parts = fontFamily.replace(/"|'/g, "").split(/\s*,\s*/);
-
         var fallbackFonts = {
           arial: "Helvetica",
           Arial: "Helvetica",
@@ -15103,7 +15495,7 @@ var AcroForm = jsPDF.AcroForm;
         case "string":
           return "string";
         case "element":
-          return src.nodeName.toLowerCase === "canvas" ? "canvas" : "element";
+          return src.nodeName.toLowerCase() === "canvas" ? "canvas" : "element";
         default:
           return "unknown";
       }
@@ -15284,6 +15676,7 @@ var AcroForm = jsPDF.AcroForm;
         // Handle old-fashioned 'onrendered' argument.
 
         var pdf = this.opt.jsPDF;
+        var fontFaces = this.opt.fontFaces;
         var options = Object.assign(
           {
             async: true,
@@ -15306,6 +15699,18 @@ var AcroForm = jsPDF.AcroForm;
         pdf.context2d.autoPaging = true;
         pdf.context2d.posX = this.opt.x;
         pdf.context2d.posY = this.opt.y;
+        pdf.context2d.fontFaces = fontFaces;
+
+        if (fontFaces) {
+          for (var i = 0; i < fontFaces.length; ++i) {
+            var font = fontFaces[i];
+            var src = font.src.find(src => src.format === "truetype");
+
+            if (src) {
+              pdf.addFont(src.url, font.ref.name, font.ref.style);
+            }
+          }
+        }
 
         options.windowHeight = options.windowHeight || 0;
         options.windowHeight =
@@ -15819,6 +16224,26 @@ var AcroForm = jsPDF.AcroForm;
   };
 
   /**
+   * @typedef FontFace
+   *
+   * The font-face type implements an interface similar to that of the font-face CSS rule,
+   * and is used by jsPDF to match fonts when the font property of CanvasRenderingContext2D
+   * is updated.
+   *
+   * All properties expect values similar to those in the font-face CSS rule. A difference
+   * is the font-family, which do not need to be enclosed in double-quotes when containing
+   * spaces like in CSS.
+   *
+   * @property {string} family The name of the font-family.
+   * @property {string|undefined} style The style that this font-face defines, e.g. 'italic'.
+   * @property {string|number|undefined} weight The weight of the font, either as a string or a number (400, 500, 600, e.g.)
+   * @property {string|undefined} stretch The stretch of the font, e.g. condensed, normal, expanded.
+   * @property {Object[]} src A list of URLs from where fonts of various formats can be fetched.
+   * @property {string} [src] url A URL to a font of a specific format.
+   * @property {string} [src] format Format of the font referenced by the URL.
+   */
+
+  /**
    * Generate a PDF from an HTML element or string using.
    *
    * @name html
@@ -15830,6 +16255,7 @@ var AcroForm = jsPDF.AcroForm;
    * @param {string} [options.filename] name of the file
    * @param {HTMLOptionImage} [options.image] image settings when converting HTML to image
    * @param {Html2CanvasOptions} [options.html2canvas] html2canvas options
+   * @param {FontFace[]} [options.fontFaces] A list of font-faces to match when resolving fonts. Fonts will be added to the PDF based on the specified URL. If omitted, the font match algorithm falls back to old algorithm.
    * @param {jsPDF} [options.jsPDF] jsPDF instance
    * @param {number} [options.x] x position on the PDF document
    * @param {number} [options.y] y position on the PDF document
@@ -15852,6 +16278,10 @@ var AcroForm = jsPDF.AcroForm;
     options.html2canvas = options.html2canvas || {};
     options.html2canvas.canvas = options.html2canvas.canvas || this.canvas;
     options.jsPDF = options.jsPDF || this;
+    options.fontFaces = options.fontFaces
+      ? options.fontFaces.map(normalizeFontFace)
+      : null;
+
     // Create a new worker with the given options.
     var worker = new Worker(options);
 
