@@ -51,6 +51,10 @@ import { atob } from "../libs/AtobBtoa.js";
       if (typeof instance !== "undefined") {
         if (instance.existsFileInVFS(font.postScriptName) === false) {
           file = instance.loadFile(font.postScriptName);
+
+          if (file) {
+            instance.addFileToVFS(font.postScriptName, file);
+          }
         } else {
           file = instance.getFileFromVFS(font.postScriptName);
         }
