@@ -8,6 +8,8 @@
  */
 
 import { jsPDF } from "../jspdf.js";
+import { Canvas } from "./canvas.js";
+import { Context2D } from "./context2d.js";
 import { normalizeFontFace } from "../libs/fontFace.js";
 import { globalObject } from "../libs/globalObject.js";
 
@@ -429,24 +431,11 @@ import { globalObject } from "../libs/globalObject.js";
 
         var pdf = this.opt.jsPDF;
         var fontFaces = this.opt.fontFaces;
-        var options = Object.assign(
-          {
-            async: true,
-            allowTaint: true,
-            scale: 1,
-            scrollX: this.opt.scrollX || 0,
-            scrollY: this.opt.scrollY || 0,
-            backgroundColor: "#ffffff",
-            imageTimeout: 15000,
-            logging: true,
-            proxy: null,
-            removeContainer: true,
-            foreignObjectRendering: false,
-            useCORS: false
-          },
-          this.opt.html2canvas
-        );
-        delete options.onrendered;
+
+        if (this.opt.resetCanvas) {
+          pdf.canvas = new Canvas(pdf);
+          pdf.context2d = new Context2D(pdf);
+        }
 
         pdf.context2d.autoPaging = true;
         pdf.context2d.posX = this.opt.x;
@@ -463,6 +452,26 @@ import { globalObject } from "../libs/globalObject.js";
             }
           }
         }
+
+        var options = Object.assign(
+          {
+            async: true,
+            allowTaint: true,
+            scale: 1,
+            scrollX: this.opt.scrollX || 0,
+            scrollY: this.opt.scrollY || 0,
+            backgroundColor: "#ffffff",
+            imageTimeout: 15000,
+            logging: true,
+            proxy: null,
+            removeContainer: true,
+            foreignObjectRendering: false,
+            useCORS: false,
+            canvas: pdf.canvas
+          },
+          this.opt.html2canvas
+        );
+        delete options.onrendered;
 
         options.windowHeight = options.windowHeight || 0;
         options.windowHeight =
@@ -1029,8 +1038,8 @@ import { globalObject } from "../libs/globalObject.js";
     options = options || {};
     options.callback = options.callback || function() {};
     options.html2canvas = options.html2canvas || {};
-    options.html2canvas.canvas = options.html2canvas.canvas || this.canvas;
     options.jsPDF = options.jsPDF || this;
+    options.resetCanvas = options.resetCanvas === true;
     options.fontFaces = options.fontFaces
       ? options.fontFaces.map(normalizeFontFace)
       : null;

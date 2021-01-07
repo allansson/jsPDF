@@ -229,6 +229,7 @@ declare module "jspdf" {
     image?: HTMLOptionImage;
     html2canvas?: Html2CanvasOptions;
     jsPDF?: jsPDF;
+    resetCanvas?: boolean;
     x?: number;
     y?: number;
     fontFaces?: HTMLFontFace[];
