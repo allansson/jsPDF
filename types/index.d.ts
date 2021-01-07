@@ -232,6 +232,7 @@ declare module "jspdf" {
     resetCanvas?: boolean;
     x?: number;
     y?: number;
+    startPage?: number;
     fontFaces?: HTMLFontFace[];
   }
 

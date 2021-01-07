@@ -89,6 +89,20 @@ var Context2D = function(pdf) {
     }
   });
 
+  var _startPage = 1;
+  /**
+   * Gets/sets the page from where to start drawing.
+   */
+
+  Object.defineProperty(this, "startPage", {
+    get: function() {
+      return _startPage;
+    },
+    set: function(value) {
+      _startPage = Math.max(1, typeof value === "number" ? value : 1);
+    }
+  });
+
   var _pageWrapXEnabled = false;
   /**
    * @name pageWrapXEnabled
@@ -1536,40 +1550,25 @@ Context2D.prototype.drawImage = function(
       sheight * factorY
     )
   );
-  var pageArray = getPagesByPath.call(this, xRect);
-  var pages = [];
-  for (var ii = 0; ii < pageArray.length; ii += 1) {
-    if (pages.indexOf(pageArray[ii]) === -1) {
-      pages.push(pageArray[ii]);
-    }
-  }
-
-  sortPages(pages);
 
   var clipPath;
   if (this.autoPaging) {
-    var min = pages[0];
-    var max = pages[pages.length - 1];
-    for (var i = min; i < max + 1; i++) {
+    var pages = getPagesByPath.call(this, xRect);
+
+    for (var i = pages.min; i < pages.max + 1; i++) {
       this.pdf.setPage(i);
+
+      var pageY = calculatePageY(this, i);
 
       if (this.ctx.clip_path.length !== 0) {
         var tmpPaths = this.path;
         clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-        this.path = pathPositionRedo(
-          clipPath,
-          this.posX,
-          -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-        );
+        this.path = pathPositionRedo(clipPath, this.posX, pageY);
         drawPaths.call(this, "fill", true);
         this.path = tmpPaths;
       }
       var tmpRect = JSON.parse(JSON.stringify(xRect));
-      tmpRect = pathPositionRedo(
-        [tmpRect],
-        this.posX,
-        -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-      )[0];
+      tmpRect = pathPositionRedo([tmpRect], this.posX, pageY)[0];
       this.pdf.addImage(
         img,
         "JPEG",
@@ -1597,68 +1596,97 @@ Context2D.prototype.drawImage = function(
   }
 };
 
-var getPagesByPath = function(path, pageWrapX, pageWrapY) {
-  var result = [];
+function calculatePageY(context, pageNumber) {
+  var relativePageNumber = pageNumber - context.startPage;
+  var pageHeight = context.pdf.internal.pageSize.height;
+
+  return -1 * pageHeight * relativePageNumber + context.posY;
+}
+
+/**
+ * Given a list of paths, this function returns the range of pages that the paths will be draw on. If
+ * a page in the range does not yet exist it will be added to the document.
+ *
+ * @param {*} paths
+ * @param {*} pageWrapX
+ * @param {*} pageWrapY
+ */
+var getPagesByPath = function(paths, pageWrapX, pageWrapY) {
+  var i;
+
+  var startPage = this.startPage;
+  var offsetY = this.posY;
+
+  var min = Number.MAX_VALUE;
+  var max = Number.MIN_VALUE;
+
+  paths = Array.isArray(paths) ? paths : [paths];
+
   pageWrapX = pageWrapX || this.pdf.internal.pageSize.width;
   pageWrapY = pageWrapY || this.pdf.internal.pageSize.height;
 
-  switch (path.type) {
-    default:
-    case "mt":
-    case "lt":
-      result.push(Math.floor((path.y + this.posY) / pageWrapY) + 1);
-      break;
-    case "arc":
-      result.push(
-        Math.floor((path.y + this.posY - path.radius) / pageWrapY) + 1
-      );
-      result.push(
-        Math.floor((path.y + this.posY + path.radius) / pageWrapY) + 1
-      );
-      break;
-    case "qct":
-      var rectOfQuadraticCurve = getQuadraticCurveBoundary(
-        this.ctx.lastPoint.x,
-        this.ctx.lastPoint.y,
-        path.x1,
-        path.y1,
-        path.x,
-        path.y
-      );
-      result.push(Math.floor(rectOfQuadraticCurve.y / pageWrapY) + 1);
-      result.push(
-        Math.floor(
-          (rectOfQuadraticCurve.y + rectOfQuadraticCurve.h) / pageWrapY
-        ) + 1
-      );
-      break;
-    case "bct":
-      var rectOfBezierCurve = getBezierCurveBoundary(
-        this.ctx.lastPoint.x,
-        this.ctx.lastPoint.y,
-        path.x1,
-        path.y1,
-        path.x2,
-        path.y2,
-        path.x,
-        path.y
-      );
-      result.push(Math.floor(rectOfBezierCurve.y / pageWrapY) + 1);
-      result.push(
-        Math.floor((rectOfBezierCurve.y + rectOfBezierCurve.h) / pageWrapY) + 1
-      );
-      break;
-    case "rect":
-      result.push(Math.floor((path.y + this.posY) / pageWrapY) + 1);
-      result.push(Math.floor((path.y + path.h + this.posY) / pageWrapY) + 1);
+  function calcMinAndMaxPage(y) {
+    var pageNumber = startPage + Math.floor((offsetY + y) / pageWrapY);
+
+    min = Math.min(min, pageNumber);
+    max = Math.max(max, pageNumber);
   }
 
-  for (var i = 0; i < result.length; i += 1) {
-    while (this.pdf.internal.getNumberOfPages() < result[i]) {
-      addPage.call(this);
+  for (i = 0; i < paths.length; ++i) {
+    var path = paths[i];
+
+    switch (paths.type) {
+      default:
+      case "mt":
+      case "lt":
+        calcMinAndMaxPage(path.y);
+        break;
+      case "arc":
+        calcMinAndMaxPage(path.y - path.radius);
+        calcMinAndMaxPage(path.y + path.radius);
+        break;
+      case "qct":
+        var rectOfQuadraticCurve = getQuadraticCurveBoundary(
+          this.ctx.lastPoint.x,
+          this.ctx.lastPoint.y,
+          path.x1,
+          path.y1,
+          path.x,
+          path.y
+        );
+        calcMinAndMaxPage(rectOfQuadraticCurve.y);
+        calcMinAndMaxPage(rectOfQuadraticCurve.y + rectOfQuadraticCurve.h);
+        break;
+      case "bct":
+        var rectOfBezierCurve = getBezierCurveBoundary(
+          this.ctx.lastPoint.x,
+          this.ctx.lastPoint.y,
+          path.x1,
+          path.y1,
+          path.x2,
+          path.y2,
+          path.x,
+          path.y
+        );
+        calcMinAndMaxPage(rectOfBezierCurve.y);
+        calcMinAndMaxPage(rectOfBezierCurve.y + rectOfBezierCurve.h);
+        break;
+      case "rect":
+        calcMinAndMaxPage(path.y);
+        calcMinAndMaxPage(path.y + path.h);
     }
   }
-  return result;
+
+  var numberOfPages = this.pdf.internal.getNumberOfPages();
+
+  for (i = numberOfPages; i < max; i += 1) {
+    addPage.call(this);
+  }
+
+  return {
+    min: min,
+    max: max
+  };
 };
 
 var addPage = function() {
@@ -1697,12 +1725,6 @@ var pathPositionRedo = function(paths, x, y) {
   return paths;
 };
 
-var sortPages = function(pages) {
-  return pages.sort(function(a, b) {
-    return a - b;
-  });
-};
-
 var pathPreProcess = function(rule, isClip) {
   var fillStyle = this.fillStyle;
   var strokeStyle = this.strokeStyle;
@@ -1715,31 +1737,14 @@ var pathPreProcess = function(rule, isClip) {
   var xPath = JSON.parse(JSON.stringify(this.path));
   var clipPath;
   var tmpPath;
-  var pages = [];
-
-  for (var i = 0; i < xPath.length; i++) {
-    if (typeof xPath[i].x !== "undefined") {
-      var page = getPagesByPath.call(this, xPath[i]);
-
-      for (var ii = 0; ii < page.length; ii += 1) {
-        if (pages.indexOf(page[ii]) === -1) {
-          pages.push(page[ii]);
-        }
-      }
-    }
-  }
-
-  for (var j = 0; j < pages.length; j++) {
-    while (this.pdf.internal.getNumberOfPages() < pages[j]) {
-      addPage.call(this);
-    }
-  }
-  sortPages(pages);
 
   if (this.autoPaging) {
-    var min = pages[0];
-    var max = pages[pages.length - 1];
-    for (var k = min; k < max + 1; k++) {
+    var pages = getPagesByPath.call(
+      this,
+      xPath.filter(p => typeof p.x !== "undefined")
+    );
+
+    for (var k = pages.min; k < pages.max + 1; k++) {
       this.pdf.setPage(k);
 
       this.fillStyle = fillStyle;
@@ -1748,23 +1753,17 @@ var pathPreProcess = function(rule, isClip) {
       this.lineWidth = lineWidth;
       this.lineJoin = lineJoin;
 
+      var pageY = calculatePageY(this, k);
+
       if (this.ctx.clip_path.length !== 0) {
         var tmpPaths = this.path;
         clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-        this.path = pathPositionRedo(
-          clipPath,
-          this.posX,
-          -1 * this.pdf.internal.pageSize.height * (k - 1) + this.posY
-        );
+        this.path = pathPositionRedo(clipPath, this.posX, pageY);
         drawPaths.call(this, rule, true);
         this.path = tmpPaths;
       }
       tmpPath = JSON.parse(JSON.stringify(origPath));
-      this.path = pathPositionRedo(
-        tmpPath,
-        this.posX,
-        -1 * this.pdf.internal.pageSize.height * (k - 1) + this.posY
-      );
+      this.path = pathPositionRedo(tmpPath, this.posX, pageY);
       if (isClip === false || k === 0) {
         drawPaths.call(this, rule, isClip);
       }
@@ -2090,40 +2089,25 @@ var putText = function(options) {
       textDimensions.h
     )
   );
-  var pageArray = getPagesByPath.call(this, textXRect);
-  var pages = [];
-  for (var ii = 0; ii < pageArray.length; ii += 1) {
-    if (pages.indexOf(pageArray[ii]) === -1) {
-      pages.push(pageArray[ii]);
-    }
-  }
-
-  sortPages(pages);
 
   var clipPath, oldSize, oldLineWidth;
   if (this.autoPaging === true) {
-    var min = pages[0];
-    var max = pages[pages.length - 1];
-    for (var i = min; i < max + 1; i++) {
+    var pages = getPagesByPath.call(this, textXRect);
+
+    for (var i = pages.min; i < pages.max + 1; i++) {
       this.pdf.setPage(i);
+
+      var pageY = calculatePageY(this, i);
 
       if (this.ctx.clip_path.length !== 0) {
         var tmpPaths = this.path;
         clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-        this.path = pathPositionRedo(
-          clipPath,
-          this.posX,
-          -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-        );
+        this.path = pathPositionRedo(clipPath, this.posX, pageY);
         drawPaths.call(this, "fill", true);
         this.path = tmpPaths;
       }
       var tmpRect = JSON.parse(JSON.stringify(textRect));
-      tmpRect = pathPositionRedo(
-        [tmpRect],
-        this.posX,
-        -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-      )[0];
+      tmpRect = pathPositionRedo([tmpRect], this.posX, pageY)[0];
 
       if (options.scale >= 0.01) {
         oldSize = this.pdf.internal.getFontSize();

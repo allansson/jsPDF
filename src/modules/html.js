@@ -437,6 +437,7 @@ import { globalObject } from "../libs/globalObject.js";
           pdf.context2d = new Context2D(pdf);
         }
 
+        pdf.context2d.startPage = this.opt.startPage;
         pdf.context2d.autoPaging = true;
         pdf.context2d.posX = this.opt.x;
         pdf.context2d.posY = this.opt.y;
@@ -1016,6 +1017,7 @@ import { globalObject } from "../libs/globalObject.js";
    * @param {string} [options.filename] name of the file
    * @param {HTMLOptionImage} [options.image] image settings when converting HTML to image
    * @param {Html2CanvasOptions} [options.html2canvas] html2canvas options
+   * @param {boolean} [options.startPage=1] Set the page from which to start drawing
    * @param {FontFace[]} [options.fontFaces] A list of font-faces to match when resolving fonts. Fonts will be added to the PDF based on the specified URL. If omitted, the font match algorithm falls back to old algorithm.
    * @param {jsPDF} [options.jsPDF] jsPDF instance
    * @param {number} [options.x] x position on the PDF document
@@ -1040,6 +1042,8 @@ import { globalObject } from "../libs/globalObject.js";
     options.html2canvas = options.html2canvas || {};
     options.jsPDF = options.jsPDF || this;
     options.resetCanvas = options.resetCanvas === true;
+    options.startPage =
+      typeof options.startPage === "number" ? options.startPage : 1;
     options.fontFaces = options.fontFaces
       ? options.fontFaces.map(normalizeFontFace)
       : null;
