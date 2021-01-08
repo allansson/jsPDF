@@ -233,6 +233,7 @@ declare module "jspdf" {
     x?: number;
     y?: number;
     startPage?: number;
+    autoPaging?: boolean;
     fontFaces?: HTMLFontFace[];
   }
 
