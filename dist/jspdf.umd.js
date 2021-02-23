@@ -1,7 +1,7 @@
 /** @license
  *
  * jsPDF - PDF Document creation from JavaScript
- * Version 2.3.0 Built on 2021-01-15T15:15:16.555Z
+ * Version 2.3.0 Built on 2021-02-23T15:54:55.063Z
  *                      CommitID 00000000
  *
  * Copyright (c) 2010-2020 James Hall <james@parall.ax>, https://github.com/MrRio/jsPDF
@@ -183,8 +183,8 @@
       ? function saveAs() {
           /* noop */
         }
-      : // Use download attribute first if possible (#193 Lumia mobile)
-      "download" in HTMLAnchorElement.prototype
+      : // Use download attribute first if possible (#193 Lumia mobile) unless this is a native app
+      (typeof HTMLAnchorElement !== "undefined" && "download" in HTMLAnchorElement.prototype)
       ? function saveAs(blob, name, opts) {
           var URL = globalObject.URL || globalObject.webkitURL;
           var a = document.createElement("a");
@@ -10700,7 +10700,7 @@
       var result = null;
 
       if (dataUrlParts.length === 2) {
-        var extractedInfo = /^data:(\w*\/\w*);*(charset=[\w=-]*)*;*$/.exec(
+        var extractedInfo = /^data:(\w*\/\w*);*(charset=(?!charset=)[\w=-]*)*;*$/.exec(
           dataUrlParts[0]
         );
         if (Array.isArray(extractedInfo)) {
@@ -11835,796 +11835,6 @@
     };
   })(jsPDF.API);
 
-  /**
-   * @license
-   * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv
-   *
-   * Licensed under the MIT License.
-   * http://opensource.org/licenses/mit-license
-   */
-
-  /**
-   * jsPDF Canvas PlugIn
-   * This plugin mimics the HTML5 Canvas
-   *
-   * The goal is to provide a way for current canvas users to print directly to a PDF.
-   * @name canvas
-   * @module
-   */
-  (function(jsPDFAPI) {
-
-    /**
-     * @class Canvas
-     * @classdesc A Canvas Wrapper for jsPDF
-     */
-    var Canvas = function() {
-      var jsPdfInstance = undefined;
-      Object.defineProperty(this, "pdf", {
-        get: function() {
-          return jsPdfInstance;
-        },
-        set: function(value) {
-          jsPdfInstance = value;
-        }
-      });
-
-      var _width = 150;
-      /**
-       * The height property is a positive integer reflecting the height HTML attribute of the <canvas> element interpreted in CSS pixels. When the attribute is not specified, or if it is set to an invalid value, like a negative, the default value of 150 is used.
-       * This is one of the two properties, the other being width, that controls the size of the canvas.
-       *
-       * @name width
-       */
-      Object.defineProperty(this, "width", {
-        get: function() {
-          return _width;
-        },
-        set: function(value) {
-          if (isNaN(value) || Number.isInteger(value) === false || value < 0) {
-            _width = 150;
-          } else {
-            _width = value;
-          }
-          if (this.getContext("2d").pageWrapXEnabled) {
-            this.getContext("2d").pageWrapX = _width + 1;
-          }
-        }
-      });
-
-      var _height = 300;
-      /**
-       * The width property is a positive integer reflecting the width HTML attribute of the <canvas> element interpreted in CSS pixels. When the attribute is not specified, or if it is set to an invalid value, like a negative, the default value of 300 is used.
-       * This is one of the two properties, the other being height, that controls the size of the canvas.
-       *
-       * @name height
-       */
-      Object.defineProperty(this, "height", {
-        get: function() {
-          return _height;
-        },
-        set: function(value) {
-          if (isNaN(value) || Number.isInteger(value) === false || value < 0) {
-            _height = 300;
-          } else {
-            _height = value;
-          }
-          if (this.getContext("2d").pageWrapYEnabled) {
-            this.getContext("2d").pageWrapY = _height + 1;
-          }
-        }
-      });
-
-      var _childNodes = [];
-      Object.defineProperty(this, "childNodes", {
-        get: function() {
-          return _childNodes;
-        },
-        set: function(value) {
-          _childNodes = value;
-        }
-      });
-
-      var _style = {};
-      Object.defineProperty(this, "style", {
-        get: function() {
-          return _style;
-        },
-        set: function(value) {
-          _style = value;
-        }
-      });
-
-      Object.defineProperty(this, "parentNode", {});
-    };
-
-    /**
-     * The getContext() method returns a drawing context on the canvas, or null if the context identifier is not supported.
-     *
-     * @name getContext
-     * @function
-     * @param {string} contextType Is a String containing the context identifier defining the drawing context associated to the canvas. Possible value is "2d", leading to the creation of a Context2D object representing a two-dimensional rendering context.
-     * @param {object} contextAttributes
-     */
-    Canvas.prototype.getContext = function(contextType, contextAttributes) {
-      contextType = contextType || "2d";
-      var key;
-
-      if (contextType !== "2d") {
-        return null;
-      }
-      for (key in contextAttributes) {
-        if (this.pdf.context2d.hasOwnProperty(key)) {
-          this.pdf.context2d[key] = contextAttributes[key];
-        }
-      }
-      this.pdf.context2d._canvas = this;
-      return this.pdf.context2d;
-    };
-
-    /**
-     * The toDataURL() method is just a stub to throw an error if accidently called.
-     *
-     * @name toDataURL
-     * @function
-     */
-    Canvas.prototype.toDataURL = function() {
-      throw new Error("toDataURL is not implemented.");
-    };
-
-    jsPDFAPI.events.push([
-      "initialized",
-      function() {
-        this.canvas = new Canvas();
-        this.canvas.pdf = this;
-      }
-    ]);
-
-    return this;
-  })(jsPDF.API);
-
-  /**
-   * @license
-   * ====================================================================
-   * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com
-   *               2013 Eduardo Menezes de Morais, eduardo.morais@usp.br
-   *               2013 Lee Driscoll, https://github.com/lsdriscoll
-   *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria
-   *               2014 James Hall, james@parall.ax
-   *               2014 Diego Casorran, https://github.com/diegocr
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining
-   * a copy of this software and associated documentation files (the
-   * "Software"), to deal in the Software without restriction, including
-   * without limitation the rights to use, copy, modify, merge, publish,
-   * distribute, sublicense, and/or sell copies of the Software, and to
-   * permit persons to whom the Software is furnished to do so, subject to
-   * the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be
-   * included in all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-   * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-   * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-   * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-   * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-   * ====================================================================
-   */
-
-  /**
-   * @name cell
-   * @module
-   */
-  (function(jsPDFAPI) {
-
-    var NO_MARGINS = { left: 0, top: 0, bottom: 0, right: 0 };
-
-    var px2pt = (0.264583 * 72) / 25.4;
-    var printingHeaderRow = false;
-
-    var _initialize = function() {
-      if (typeof this.internal.__cell__ === "undefined") {
-        this.internal.__cell__ = {};
-        this.internal.__cell__.padding = 3;
-        this.internal.__cell__.headerFunction = undefined;
-        this.internal.__cell__.margins = Object.assign({}, NO_MARGINS);
-        this.internal.__cell__.margins.width = this.getPageWidth();
-        _reset.call(this);
-      }
-    };
-
-    var _reset = function() {
-      this.internal.__cell__.lastCell = new Cell();
-      this.internal.__cell__.pages = 1;
-    };
-
-    var Cell = function() {
-      var _x = arguments[0];
-      Object.defineProperty(this, "x", {
-        enumerable: true,
-        get: function() {
-          return _x;
-        },
-        set: function(value) {
-          _x = value;
-        }
-      });
-      var _y = arguments[1];
-      Object.defineProperty(this, "y", {
-        enumerable: true,
-        get: function() {
-          return _y;
-        },
-        set: function(value) {
-          _y = value;
-        }
-      });
-      var _width = arguments[2];
-      Object.defineProperty(this, "width", {
-        enumerable: true,
-        get: function() {
-          return _width;
-        },
-        set: function(value) {
-          _width = value;
-        }
-      });
-      var _height = arguments[3];
-      Object.defineProperty(this, "height", {
-        enumerable: true,
-        get: function() {
-          return _height;
-        },
-        set: function(value) {
-          _height = value;
-        }
-      });
-      var _text = arguments[4];
-      Object.defineProperty(this, "text", {
-        enumerable: true,
-        get: function() {
-          return _text;
-        },
-        set: function(value) {
-          _text = value;
-        }
-      });
-      var _lineNumber = arguments[5];
-      Object.defineProperty(this, "lineNumber", {
-        enumerable: true,
-        get: function() {
-          return _lineNumber;
-        },
-        set: function(value) {
-          _lineNumber = value;
-        }
-      });
-      var _align = arguments[6];
-      Object.defineProperty(this, "align", {
-        enumerable: true,
-        get: function() {
-          return _align;
-        },
-        set: function(value) {
-          _align = value;
-        }
-      });
-
-      return this;
-    };
-
-    Cell.prototype.clone = function() {
-      return new Cell(
-        this.x,
-        this.y,
-        this.width,
-        this.height,
-        this.text,
-        this.lineNumber,
-        this.align
-      );
-    };
-
-    Cell.prototype.toArray = function() {
-      return [
-        this.x,
-        this.y,
-        this.width,
-        this.height,
-        this.text,
-        this.lineNumber,
-        this.align
-      ];
-    };
-
-    /**
-     * @name setHeaderFunction
-     * @function
-     * @param {function} func
-     */
-    jsPDFAPI.setHeaderFunction = function(func) {
-      _initialize.call(this);
-      this.internal.__cell__.headerFunction =
-        typeof func === "function" ? func : undefined;
-      return this;
-    };
-
-    /**
-     * @name getTextDimensions
-     * @function
-     * @param {string} txt
-     * @returns {Object} dimensions
-     */
-    jsPDFAPI.getTextDimensions = function(text, options) {
-      _initialize.call(this);
-      options = options || {};
-      var fontSize = options.fontSize || this.getFontSize();
-      var font = options.font || this.getFont();
-      var scaleFactor = options.scaleFactor || this.internal.scaleFactor;
-      var width = 0;
-      var amountOfLines = 0;
-      var height = 0;
-      var tempWidth = 0;
-
-      if (!Array.isArray(text) && typeof text !== "string") {
-        if (typeof text === "number") {
-          text = String(text);
-        } else {
-          throw new Error(
-            "getTextDimensions expects text-parameter to be of type String or type Number or an Array of Strings."
-          );
-        }
-      }
-
-      const maxWidth = options.maxWidth;
-      if (maxWidth > 0) {
-        if (typeof text === "string") {
-          text = this.splitTextToSize(text, maxWidth);
-        } else if (Object.prototype.toString.call(text) === "[object Array]") {
-          text = text.reduce(function(acc, textLine) {
-            return acc.concat(scope.splitTextToSize(textLine, maxWidth));
-          }, []);
-        }
-      } else {
-        // Without the else clause, it will not work if you do not pass along maxWidth
-        text = Array.isArray(text) ? text : [text];
-      }
-
-      for (var i = 0; i < text.length; i++) {
-        tempWidth = this.getStringUnitWidth(text[i], { font: font }) * fontSize;
-        if (width < tempWidth) {
-          width = tempWidth;
-        }
-      }
-
-      if (width !== 0) {
-        amountOfLines = text.length;
-      }
-
-      width = width / scaleFactor;
-      height = Math.max(
-        (amountOfLines * fontSize * this.getLineHeightFactor() -
-          fontSize * (this.getLineHeightFactor() - 1)) /
-          scaleFactor,
-        0
-      );
-      return { w: width, h: height };
-    };
-
-    /**
-     * @name cellAddPage
-     * @function
-     */
-    jsPDFAPI.cellAddPage = function() {
-      _initialize.call(this);
-
-      this.addPage();
-
-      var margins = this.internal.__cell__.margins || NO_MARGINS;
-      this.internal.__cell__.lastCell = new Cell(
-        margins.left,
-        margins.top,
-        undefined,
-        undefined
-      );
-      this.internal.__cell__.pages += 1;
-
-      return this;
-    };
-
-    /**
-     * @name cell
-     * @function
-     * @param {number} x
-     * @param {number} y
-     * @param {number} width
-     * @param {number} height
-     * @param {string} text
-     * @param {number} lineNumber lineNumber
-     * @param {string} align
-     * @return {jsPDF} jsPDF-instance
-     */
-    var cell = (jsPDFAPI.cell = function() {
-      var currentCell;
-
-      if (arguments[0] instanceof Cell) {
-        currentCell = arguments[0];
-      } else {
-        currentCell = new Cell(
-          arguments[0],
-          arguments[1],
-          arguments[2],
-          arguments[3],
-          arguments[4],
-          arguments[5]
-        );
-      }
-      _initialize.call(this);
-      var lastCell = this.internal.__cell__.lastCell;
-      var padding = this.internal.__cell__.padding;
-      var margins = this.internal.__cell__.margins || NO_MARGINS;
-      var tableHeaderRow = this.internal.__cell__.tableHeaderRow;
-      var printHeaders = this.internal.__cell__.printHeaders;
-      // If this is not the first cell, we must change its position
-      if (typeof lastCell.lineNumber !== "undefined") {
-        if (lastCell.lineNumber === currentCell.lineNumber) {
-          //Same line
-          currentCell.x = (lastCell.x || 0) + (lastCell.width || 0);
-          currentCell.y = lastCell.y || 0;
-        } else {
-          //New line
-          if (
-            lastCell.y + lastCell.height + currentCell.height + margins.bottom >
-            this.getPageHeight()
-          ) {
-            this.cellAddPage();
-            currentCell.y = margins.top;
-            if (printHeaders && tableHeaderRow) {
-              this.printHeaderRow(currentCell.lineNumber, true);
-              currentCell.y += tableHeaderRow[0].height;
-            }
-          } else {
-            currentCell.y = lastCell.y + lastCell.height || currentCell.y;
-          }
-        }
-      }
-
-      if (typeof currentCell.text[0] !== "undefined") {
-        this.rect(
-          currentCell.x,
-          currentCell.y,
-          currentCell.width,
-          currentCell.height,
-          printingHeaderRow === true ? "FD" : undefined
-        );
-        if (currentCell.align === "right") {
-          this.text(
-            currentCell.text,
-            currentCell.x + currentCell.width - padding,
-            currentCell.y + padding,
-            { align: "right", baseline: "top" }
-          );
-        } else if (currentCell.align === "center") {
-          this.text(
-            currentCell.text,
-            currentCell.x + currentCell.width / 2,
-            currentCell.y + padding,
-            {
-              align: "center",
-              baseline: "top",
-              maxWidth: currentCell.width - padding - padding
-            }
-          );
-        } else {
-          this.text(
-            currentCell.text,
-            currentCell.x + padding,
-            currentCell.y + padding,
-            {
-              align: "left",
-              baseline: "top",
-              maxWidth: currentCell.width - padding - padding
-            }
-          );
-        }
-      }
-      this.internal.__cell__.lastCell = currentCell;
-      return this;
-    });
-
-    /**
-       * Create a table from a set of data.
-       * @name table
-       * @function
-       * @param {Integer} [x] : left-position for top-left corner of table
-       * @param {Integer} [y] top-position for top-left corner of table
-       * @param {Object[]} [data] An array of objects containing key-value pairs corresponding to a row of data.
-       * @param {String[]} [headers] Omit or null to auto-generate headers at a performance cost
-
-       * @param {Object} [config.printHeaders] True to print column headers at the top of every page
-       * @param {Object} [config.autoSize] True to dynamically set the column widths to match the widest cell value
-       * @param {Object} [config.margins] margin values for left, top, bottom, and width
-       * @param {Object} [config.fontSize] Integer fontSize to use (optional)
-       * @param {Object} [config.padding] cell-padding in pt to use (optional)
-       * @param {Object} [config.headerBackgroundColor] default is #c8c8c8 (optional)
-       * @returns {jsPDF} jsPDF-instance
-       */
-
-    jsPDFAPI.table = function(x, y, data, headers, config) {
-      _initialize.call(this);
-      if (!data) {
-        throw new Error("No data for PDF table.");
-      }
-
-      config = config || {};
-
-      var headerNames = [],
-        headerLabels = [],
-        headerAligns = [],
-        i,
-        columnMatrix = {},
-        columnWidths = {},
-        column,
-        columnMinWidths = [],
-        j,
-        tableHeaderConfigs = [],
-        //set up defaults. If a value is provided in config, defaults will be overwritten:
-        autoSize = config.autoSize || false,
-        printHeaders = config.printHeaders === false ? false : true,
-        fontSize =
-          config.css && typeof config.css["font-size"] !== "undefined"
-            ? config.css["font-size"] * 16
-            : config.fontSize || 12,
-        margins =
-          config.margins ||
-          Object.assign({ width: this.getPageWidth() }, NO_MARGINS),
-        padding = typeof config.padding === "number" ? config.padding : 3,
-        headerBackgroundColor = config.headerBackgroundColor || "#c8c8c8";
-
-      _reset.call(this);
-
-      this.internal.__cell__.printHeaders = printHeaders;
-      this.internal.__cell__.margins = margins;
-      this.internal.__cell__.table_font_size = fontSize;
-      this.internal.__cell__.padding = padding;
-      this.internal.__cell__.headerBackgroundColor = headerBackgroundColor;
-      this.setFontSize(fontSize);
-
-      // Set header values
-      if (headers === undefined || headers === null) {
-        // No headers defined so we derive from data
-        headerNames = Object.keys(data[0]);
-        headerLabels = headerNames;
-        headerAligns = headerNames.map(function() {
-          return "left";
-        });
-      } else if (Array.isArray(headers) && typeof headers[0] === "object") {
-        headerNames = headers.map(function(header) {
-          return header.name;
-        });
-        headerLabels = headers.map(function(header) {
-          return header.prompt || header.name || "";
-        });
-        headerAligns = headers.map(function(header) {
-          return header.align || "left";
-        });
-        // Split header configs into names and prompts
-        for (i = 0; i < headers.length; i += 1) {
-          columnWidths[headers[i].name] = headers[i].width * px2pt;
-        }
-      } else if (Array.isArray(headers) && typeof headers[0] === "string") {
-        headerNames = headers;
-        headerLabels = headerNames;
-        headerAligns = headerNames.map(function() {
-          return "left";
-        });
-      }
-
-      if (autoSize) {
-        var headerName;
-        for (i = 0; i < headerNames.length; i += 1) {
-          headerName = headerNames[i];
-
-          // Create a matrix of columns e.g., {column_title: [row1_Record, row2_Record]}
-
-          columnMatrix[headerName] = data.map(function(rec) {
-            return rec[headerName];
-          });
-
-          // get header width
-          this.setFont(undefined, "bold");
-          columnMinWidths.push(
-            this.getTextDimensions(headerLabels[i], {
-              fontSize: this.internal.__cell__.table_font_size,
-              scaleFactor: this.internal.scaleFactor
-            }).w
-          );
-          column = columnMatrix[headerName];
-
-          // get cell widths
-          this.setFont(undefined, "normal");
-          for (j = 0; j < column.length; j += 1) {
-            columnMinWidths.push(
-              this.getTextDimensions(column[j], {
-                fontSize: this.internal.__cell__.table_font_size,
-                scaleFactor: this.internal.scaleFactor
-              }).w
-            );
-          }
-
-          // get final column width
-          columnWidths[headerName] =
-            Math.max.apply(null, columnMinWidths) + padding + padding;
-
-          //have to reset
-          columnMinWidths = [];
-        }
-      }
-
-      // -- Construct the table
-
-      if (printHeaders) {
-        var row = {};
-        for (i = 0; i < headerNames.length; i += 1) {
-          row[headerNames[i]] = {};
-          row[headerNames[i]].text = headerLabels[i];
-          row[headerNames[i]].align = headerAligns[i];
-        }
-
-        var rowHeight = calculateLineHeight.call(this, row, columnWidths);
-
-        // Construct the header row
-        tableHeaderConfigs = headerNames.map(function(value) {
-          return new Cell(
-            x,
-            y,
-            columnWidths[value],
-            rowHeight,
-            row[value].text,
-            undefined,
-            row[value].align
-          );
-        });
-
-        // Store the table header config
-        this.setTableHeaderRow(tableHeaderConfigs);
-
-        // Print the header for the start of the table
-        this.printHeaderRow(1, false);
-      }
-
-      // Construct the data rows
-
-      var align = headers.reduce(function(pv, cv) {
-        pv[cv.name] = cv.align;
-        return pv;
-      }, {});
-      for (i = 0; i < data.length; i += 1) {
-        var lineHeight = calculateLineHeight.call(this, data[i], columnWidths);
-
-        for (j = 0; j < headerNames.length; j += 1) {
-          cell.call(
-            this,
-            new Cell(
-              x,
-              y,
-              columnWidths[headerNames[j]],
-              lineHeight,
-              data[i][headerNames[j]],
-              i + 2,
-              align[headerNames[j]]
-            )
-          );
-        }
-      }
-      this.internal.__cell__.table_x = x;
-      this.internal.__cell__.table_y = y;
-      return this;
-    };
-
-    /**
-     * Calculate the height for containing the highest column
-     *
-     * @name calculateLineHeight
-     * @function
-     * @param {Object[]} model is the line of data we want to calculate the height of
-     * @param {Integer[]} columnWidths is size of each column
-     * @returns {number} lineHeight
-     * @private
-     */
-    var calculateLineHeight = function calculateLineHeight(model, columnWidths) {
-      var padding = this.internal.__cell__.padding;
-      var fontSize = this.internal.__cell__.table_font_size;
-      var scaleFactor = this.internal.scaleFactor;
-
-      return Object.keys(model)
-        .map(function(key) {
-          var value = model[key];
-          return this.splitTextToSize(
-            value.hasOwnProperty("text") ? value.text : value,
-            columnWidths[key] - padding - padding
-          );
-        }, this)
-        .map(function(value) {
-          return (
-            (this.getLineHeightFactor() * value.length * fontSize) / scaleFactor +
-            padding +
-            padding
-          );
-        }, this)
-        .reduce(function(pv, cv) {
-          return Math.max(pv, cv);
-        }, 0);
-    };
-
-    /**
-     * Store the config for outputting a table header
-     *
-     * @name setTableHeaderRow
-     * @function
-     * @param {Object[]} config
-     * An array of cell configs that would define a header row: Each config matches the config used by jsPDFAPI.cell
-     * except the lineNumber parameter is excluded
-     */
-    jsPDFAPI.setTableHeaderRow = function(config) {
-      _initialize.call(this);
-      this.internal.__cell__.tableHeaderRow = config;
-    };
-
-    /**
-     * Output the store header row
-     *
-     * @name printHeaderRow
-     * @function
-     * @param {number} lineNumber The line number to output the header at
-     * @param {boolean} new_page
-     */
-    jsPDFAPI.printHeaderRow = function(lineNumber, new_page) {
-      _initialize.call(this);
-      if (!this.internal.__cell__.tableHeaderRow) {
-        throw new Error("Property tableHeaderRow does not exist.");
-      }
-
-      var tableHeaderCell;
-
-      printingHeaderRow = true;
-      if (typeof this.internal.__cell__.headerFunction === "function") {
-        var position = this.internal.__cell__.headerFunction(
-          this,
-          this.internal.__cell__.pages
-        );
-        this.internal.__cell__.lastCell = new Cell(
-          position[0],
-          position[1],
-          position[2],
-          position[3],
-          undefined,
-          -1
-        );
-      }
-      this.setFont(undefined, "bold");
-
-      var tempHeaderConf = [];
-      for (var i = 0; i < this.internal.__cell__.tableHeaderRow.length; i += 1) {
-        tableHeaderCell = this.internal.__cell__.tableHeaderRow[i].clone();
-        if (new_page) {
-          tableHeaderCell.y = this.internal.__cell__.margins.top || 0;
-          tempHeaderConf.push(tableHeaderCell);
-        }
-        tableHeaderCell.lineNumber = lineNumber;
-        this.setFillColor(this.internal.__cell__.headerBackgroundColor);
-        cell.call(this, tableHeaderCell);
-      }
-      if (tempHeaderConf.length > 0) {
-        this.setTableHeaderRow(tempHeaderConf);
-      }
-      this.setFont(undefined, "normal");
-      printingHeaderRow = false;
-    };
-  })(jsPDF.API);
-
   function toLookup(arr) {
     return arr.reduce(function(lookup, name, index) {
       lookup[name] = index;
@@ -13021,1569 +12231,1592 @@
    * @name context2d
    * @module
    */
-  (function(jsPDFAPI) {
-    var ContextLayer = function(ctx) {
-      ctx = ctx || {};
-      this.isStrokeTransparent = ctx.isStrokeTransparent || false;
-      this.strokeOpacity = ctx.strokeOpacity || 1;
-      this.strokeStyle = ctx.strokeStyle || "#000000";
-      this.fillStyle = ctx.fillStyle || "#000000";
-      this.isFillTransparent = ctx.isFillTransparent || false;
-      this.fillOpacity = ctx.fillOpacity || 1;
-      this.font = ctx.font || "10px sans-serif";
-      this.textBaseline = ctx.textBaseline || "alphabetic";
-      this.textAlign = ctx.textAlign || "left";
-      this.lineWidth = ctx.lineWidth || 1;
-      this.lineJoin = ctx.lineJoin || "miter";
-      this.lineCap = ctx.lineCap || "butt";
-      this.path = ctx.path || [];
-      this.transform =
-        typeof ctx.transform !== "undefined"
-          ? ctx.transform.clone()
-          : new Matrix();
-      this.globalCompositeOperation = ctx.globalCompositeOperation || "normal";
-      this.globalAlpha = ctx.globalAlpha || 1.0;
-      this.clip_path = ctx.clip_path || [];
-      this.currentPoint = ctx.currentPoint || new Point();
-      this.miterLimit = ctx.miterLimit || 10.0;
-      this.lastPoint = ctx.lastPoint || new Point();
+  var ContextLayer = function(ctx) {
+    ctx = ctx || {};
+    this.isStrokeTransparent = ctx.isStrokeTransparent || false;
+    this.strokeOpacity = ctx.strokeOpacity || 1;
+    this.strokeStyle = ctx.strokeStyle || "#000000";
+    this.fillStyle = ctx.fillStyle || "#000000";
+    this.isFillTransparent = ctx.isFillTransparent || false;
+    this.fillOpacity = ctx.fillOpacity || 1;
+    this.font = ctx.font || "10px sans-serif";
+    this.textBaseline = ctx.textBaseline || "alphabetic";
+    this.textAlign = ctx.textAlign || "left";
+    this.lineWidth = ctx.lineWidth || 1;
+    this.lineJoin = ctx.lineJoin || "miter";
+    this.lineCap = ctx.lineCap || "butt";
+    this.path = ctx.path || [];
+    this.transform =
+      typeof ctx.transform !== "undefined" ? ctx.transform.clone() : new Matrix();
+    this.globalCompositeOperation = ctx.globalCompositeOperation || "normal";
+    this.globalAlpha = ctx.globalAlpha || 1.0;
+    this.clip_path = ctx.clip_path || [];
+    this.currentPoint = ctx.currentPoint || new Point();
+    this.miterLimit = ctx.miterLimit || 10.0;
+    this.lastPoint = ctx.lastPoint || new Point();
 
-      this.ignoreClearRect =
-        typeof ctx.ignoreClearRect === "boolean" ? ctx.ignoreClearRect : true;
-      return this;
-    };
+    this.ignoreClearRect =
+      typeof ctx.ignoreClearRect === "boolean" ? ctx.ignoreClearRect : true;
+    return this;
+  };
 
-    //stub
-    var f2,
-      getHorizontalCoordinateString,
-      getVerticalCoordinateString,
-      getHorizontalCoordinate,
-      getVerticalCoordinate,
-      Point,
-      Rectangle,
-      Matrix,
-      _ctx;
-    jsPDFAPI.events.push([
-      "initialized",
-      function() {
-        this.context2d = new Context2D(this);
+  //stub
+  var f2$1,
+    getHorizontalCoordinateString,
+    getVerticalCoordinateString,
+    getHorizontalCoordinate,
+    getVerticalCoordinate,
+    Point,
+    Rectangle,
+    Matrix;
 
-        f2 = this.internal.f2;
-        getHorizontalCoordinateString = this.internal.getCoordinateString;
-        getVerticalCoordinateString = this.internal.getVerticalCoordinateString;
-        getHorizontalCoordinate = this.internal.getHorizontalCoordinate;
-        getVerticalCoordinate = this.internal.getVerticalCoordinate;
-        Point = this.internal.Point;
-        Rectangle = this.internal.Rectangle;
-        Matrix = this.internal.Matrix;
-        _ctx = new ContextLayer();
+  jsPDF.API.events.push([
+    "initialized",
+    function() {
+      f2$1 = this.internal.f2;
+      getHorizontalCoordinateString = this.internal.getCoordinateString;
+      getVerticalCoordinateString = this.internal.getVerticalCoordinateString;
+      getHorizontalCoordinate = this.internal.getHorizontalCoordinate;
+      getVerticalCoordinate = this.internal.getVerticalCoordinate;
+      Point = this.internal.Point;
+      Rectangle = this.internal.Rectangle;
+      Matrix = this.internal.Matrix;
+
+      this.context2d = new Context2D(this);
+    }
+  ]);
+
+  var Context2D = function(pdf) {
+    Object.defineProperty(this, "canvas", {
+      get: function() {
+        return { parentNode: false, style: false };
       }
-    ]);
+    });
 
-    var Context2D = function(pdf) {
-      Object.defineProperty(this, "canvas", {
-        get: function() {
-          return { parentNode: false, style: false };
+    var _pdf = pdf;
+    Object.defineProperty(this, "pdf", {
+      get: function() {
+        return _pdf;
+      }
+    });
+
+    var _startPage = 1;
+    /**
+     * Gets/sets the page from where to start drawing.
+     */
+
+    Object.defineProperty(this, "startPage", {
+      get: function() {
+        return _startPage;
+      },
+      set: function(value) {
+        _startPage = Math.max(1, typeof value === "number" ? value : 1);
+      }
+    });
+
+    var _pageWrapXEnabled = false;
+    /**
+     * @name pageWrapXEnabled
+     * @type {boolean}
+     * @default false
+     */
+    Object.defineProperty(this, "pageWrapXEnabled", {
+      get: function() {
+        return _pageWrapXEnabled;
+      },
+      set: function(value) {
+        _pageWrapXEnabled = Boolean(value);
+      }
+    });
+
+    var _pageWrapYEnabled = false;
+    /**
+     * @name pageWrapYEnabled
+     * @type {boolean}
+     * @default true
+     */
+    Object.defineProperty(this, "pageWrapYEnabled", {
+      get: function() {
+        return _pageWrapYEnabled;
+      },
+      set: function(value) {
+        _pageWrapYEnabled = Boolean(value);
+      }
+    });
+
+    var _posX = 0;
+    /**
+     * @name posX
+     * @type {number}
+     * @default 0
+     */
+    Object.defineProperty(this, "posX", {
+      get: function() {
+        return _posX;
+      },
+      set: function(value) {
+        if (!isNaN(value)) {
+          _posX = value;
         }
-      });
+      }
+    });
 
-      var _pdf = pdf;
-      Object.defineProperty(this, "pdf", {
-        get: function() {
-          return _pdf;
+    var _posY = 0;
+    /**
+     * @name posY
+     * @type {number}
+     * @default 0
+     */
+    Object.defineProperty(this, "posY", {
+      get: function() {
+        return _posY;
+      },
+      set: function(value) {
+        if (!isNaN(value)) {
+          _posY = value;
         }
-      });
+      }
+    });
 
-      var _pageWrapXEnabled = false;
-      /**
-       * @name pageWrapXEnabled
-       * @type {boolean}
-       * @default false
-       */
-      Object.defineProperty(this, "pageWrapXEnabled", {
-        get: function() {
-          return _pageWrapXEnabled;
-        },
-        set: function(value) {
-          _pageWrapXEnabled = Boolean(value);
+    var _autoPaging = false;
+    /**
+     * @name autoPaging
+     * @type {boolean}
+     * @default true
+     */
+    Object.defineProperty(this, "autoPaging", {
+      get: function() {
+        return _autoPaging;
+      },
+      set: function(value) {
+        _autoPaging = Boolean(value);
+      }
+    });
+
+    var lastBreak = 0;
+    /**
+     * @name lastBreak
+     * @type {number}
+     * @default 0
+     */
+    Object.defineProperty(this, "lastBreak", {
+      get: function() {
+        return lastBreak;
+      },
+      set: function(value) {
+        lastBreak = value;
+      }
+    });
+
+    var pageBreaks = [];
+    /**
+     * Y Position of page breaks.
+     * @name pageBreaks
+     * @type {number}
+     * @default 0
+     */
+    Object.defineProperty(this, "pageBreaks", {
+      get: function() {
+        return pageBreaks;
+      },
+      set: function(value) {
+        pageBreaks = value;
+      }
+    });
+
+    /**
+     * @name ctx
+     * @type {object}
+     * @default {}
+     */
+    Object.defineProperty(this, "ctx", {
+      get: function() {
+        return _ctx;
+      },
+      set: function(value) {
+        if (value instanceof ContextLayer) {
+          _ctx = value;
         }
-      });
+      }
+    });
 
-      var _pageWrapYEnabled = false;
-      /**
-       * @name pageWrapYEnabled
-       * @type {boolean}
-       * @default true
-       */
-      Object.defineProperty(this, "pageWrapYEnabled", {
-        get: function() {
-          return _pageWrapYEnabled;
-        },
-        set: function(value) {
-          _pageWrapYEnabled = Boolean(value);
+    var _ctx = new ContextLayer();
+    /**
+     * @name path
+     * @type {array}
+     * @default []
+     */
+    Object.defineProperty(this, "path", {
+      get: function() {
+        return _ctx.path;
+      },
+      set: function(value) {
+        _ctx.path = value;
+      }
+    });
+
+    /**
+     * @name ctxStack
+     * @type {array}
+     * @default []
+     */
+    var _ctxStack = [];
+    Object.defineProperty(this, "ctxStack", {
+      get: function() {
+        return _ctxStack;
+      },
+      set: function(value) {
+        _ctxStack = value;
+      }
+    });
+
+    /**
+     * Sets or returns the color, gradient, or pattern used to fill the drawing
+     *
+     * @name fillStyle
+     * @default #000000
+     * @property {(color|gradient|pattern)} value The color of the drawing. Default value is #000000<br />
+     * A gradient object (linear or radial) used to fill the drawing (not supported by context2d)<br />
+     * A pattern object to use to fill the drawing (not supported by context2d)
+     */
+    Object.defineProperty(this, "fillStyle", {
+      get: function() {
+        return this.ctx.fillStyle;
+      },
+      set: function(value) {
+        var rgba;
+        rgba = getRGBA(value);
+
+        this.ctx.fillStyle = rgba.style;
+        this.ctx.isFillTransparent = rgba.a === 0;
+        this.ctx.fillOpacity = rgba.a;
+
+        this.pdf.setFillColor(rgba.r, rgba.g, rgba.b, { a: rgba.a });
+        this.pdf.setTextColor(rgba.r, rgba.g, rgba.b, { a: rgba.a });
+      }
+    });
+
+    /**
+     * Sets or returns the color, gradient, or pattern used for strokes
+     *
+     * @name strokeStyle
+     * @default #000000
+     * @property {color} color A CSS color value that indicates the stroke color of the drawing. Default value is #000000 (not supported by context2d)
+     * @property {gradient} gradient A gradient object (linear or radial) used to create a gradient stroke (not supported by context2d)
+     * @property {pattern} pattern A pattern object used to create a pattern stroke (not supported by context2d)
+     */
+    Object.defineProperty(this, "strokeStyle", {
+      get: function() {
+        return this.ctx.strokeStyle;
+      },
+      set: function(value) {
+        var rgba = getRGBA(value);
+
+        this.ctx.strokeStyle = rgba.style;
+        this.ctx.isStrokeTransparent = rgba.a === 0;
+        this.ctx.strokeOpacity = rgba.a;
+
+        if (rgba.a === 0) {
+          this.pdf.setDrawColor(255, 255, 255);
+        } else if (rgba.a === 1) {
+          this.pdf.setDrawColor(rgba.r, rgba.g, rgba.b);
+        } else {
+          this.pdf.setDrawColor(rgba.r, rgba.g, rgba.b);
         }
-      });
+      }
+    });
 
-      var _posX = 0;
-      /**
-       * @name posX
-       * @type {number}
-       * @default 0
-       */
-      Object.defineProperty(this, "posX", {
-        get: function() {
-          return _posX;
-        },
-        set: function(value) {
-          if (!isNaN(value)) {
-            _posX = value;
-          }
+    /**
+     * Sets or returns the style of the end caps for a line
+     *
+     * @name lineCap
+     * @default butt
+     * @property {(butt|round|square)} lineCap butt A flat edge is added to each end of the line <br/>
+     * round A rounded end cap is added to each end of the line<br/>
+     * square A square end cap is added to each end of the line<br/>
+     */
+    Object.defineProperty(this, "lineCap", {
+      get: function() {
+        return this.ctx.lineCap;
+      },
+      set: function(value) {
+        if (["butt", "round", "square"].indexOf(value) !== -1) {
+          this.ctx.lineCap = value;
+          this.pdf.setLineCap(value);
         }
-      });
+      }
+    });
 
-      var _posY = 0;
-      /**
-       * @name posY
-       * @type {number}
-       * @default 0
-       */
-      Object.defineProperty(this, "posY", {
-        get: function() {
-          return _posY;
-        },
-        set: function(value) {
-          if (!isNaN(value)) {
-            _posY = value;
-          }
+    /**
+     * Sets or returns the current line width
+     *
+     * @name lineWidth
+     * @default 1
+     * @property {number} lineWidth The current line width, in pixels
+     */
+    Object.defineProperty(this, "lineWidth", {
+      get: function() {
+        return this.ctx.lineWidth;
+      },
+      set: function(value) {
+        if (!isNaN(value)) {
+          this.ctx.lineWidth = value;
+          this.pdf.setLineWidth(value);
         }
-      });
+      }
+    });
 
-      var _autoPaging = false;
-      /**
-       * @name autoPaging
-       * @type {boolean}
-       * @default true
-       */
-      Object.defineProperty(this, "autoPaging", {
-        get: function() {
-          return _autoPaging;
-        },
-        set: function(value) {
-          _autoPaging = Boolean(value);
+    /**
+     * Sets or returns the type of corner created, when two lines meet
+     */
+    Object.defineProperty(this, "lineJoin", {
+      get: function() {
+        return this.ctx.lineJoin;
+      },
+      set: function(value) {
+        if (["bevel", "round", "miter"].indexOf(value) !== -1) {
+          this.ctx.lineJoin = value;
+          this.pdf.setLineJoin(value);
         }
-      });
+      }
+    });
 
-      var lastBreak = 0;
-      /**
-       * @name lastBreak
-       * @type {number}
-       * @default 0
-       */
-      Object.defineProperty(this, "lastBreak", {
-        get: function() {
-          return lastBreak;
-        },
-        set: function(value) {
-          lastBreak = value;
+    /**
+     * A number specifying the miter limit ratio in coordinate space units. Zero, negative, Infinity, and NaN values are ignored. The default value is 10.0.
+     *
+     * @name miterLimit
+     * @default 10
+     */
+    Object.defineProperty(this, "miterLimit", {
+      get: function() {
+        return this.ctx.miterLimit;
+      },
+      set: function(value) {
+        if (!isNaN(value)) {
+          this.ctx.miterLimit = value;
+          this.pdf.setMiterLimit(value);
         }
-      });
+      }
+    });
 
-      var pageBreaks = [];
-      /**
-       * Y Position of page breaks.
-       * @name pageBreaks
-       * @type {number}
-       * @default 0
-       */
-      Object.defineProperty(this, "pageBreaks", {
-        get: function() {
-          return pageBreaks;
-        },
-        set: function(value) {
-          pageBreaks = value;
+    Object.defineProperty(this, "textBaseline", {
+      get: function() {
+        return this.ctx.textBaseline;
+      },
+      set: function(value) {
+        this.ctx.textBaseline = value;
+      }
+    });
+
+    Object.defineProperty(this, "textAlign", {
+      get: function() {
+        return this.ctx.textAlign;
+      },
+      set: function(value) {
+        if (["right", "end", "center", "left", "start"].indexOf(value) !== -1) {
+          this.ctx.textAlign = value;
         }
-      });
+      }
+    });
 
-      /**
-       * @name ctx
-       * @type {object}
-       * @default {}
-       */
-      Object.defineProperty(this, "ctx", {
-        get: function() {
-          return _ctx;
-        },
-        set: function(value) {
-          if (value instanceof ContextLayer) {
-            _ctx = value;
-          }
-        }
-      });
+    var _fontFaceMap = null;
 
-      /**
-       * @name path
-       * @type {array}
-       * @default []
-       */
-      Object.defineProperty(this, "path", {
-        get: function() {
-          return _ctx.path;
-        },
-        set: function(value) {
-          _ctx.path = value;
-        }
-      });
+    function getFontFaceMap(pdf, fontFaces) {
+      if (_fontFaceMap === null) {
+        var fontMap = pdf.getFontList();
 
-      /**
-       * @name ctxStack
-       * @type {array}
-       * @default []
-       */
-      var _ctxStack = [];
-      Object.defineProperty(this, "ctxStack", {
-        get: function() {
-          return _ctxStack;
-        },
-        set: function(value) {
-          _ctxStack = value;
-        }
-      });
+        var convertedFontFaces = convertToFontFaces(fontMap);
 
-      /**
-       * Sets or returns the color, gradient, or pattern used to fill the drawing
-       *
-       * @name fillStyle
-       * @default #000000
-       * @property {(color|gradient|pattern)} value The color of the drawing. Default value is #000000<br />
-       * A gradient object (linear or radial) used to fill the drawing (not supported by context2d)<br />
-       * A pattern object to use to fill the drawing (not supported by context2d)
-       */
-      Object.defineProperty(this, "fillStyle", {
-        get: function() {
-          return this.ctx.fillStyle;
-        },
-        set: function(value) {
-          var rgba;
-          rgba = getRGBA(value);
-
-          this.ctx.fillStyle = rgba.style;
-          this.ctx.isFillTransparent = rgba.a === 0;
-          this.ctx.fillOpacity = rgba.a;
-
-          this.pdf.setFillColor(rgba.r, rgba.g, rgba.b, { a: rgba.a });
-          this.pdf.setTextColor(rgba.r, rgba.g, rgba.b, { a: rgba.a });
-        }
-      });
-
-      /**
-       * Sets or returns the color, gradient, or pattern used for strokes
-       *
-       * @name strokeStyle
-       * @default #000000
-       * @property {color} color A CSS color value that indicates the stroke color of the drawing. Default value is #000000 (not supported by context2d)
-       * @property {gradient} gradient A gradient object (linear or radial) used to create a gradient stroke (not supported by context2d)
-       * @property {pattern} pattern A pattern object used to create a pattern stroke (not supported by context2d)
-       */
-      Object.defineProperty(this, "strokeStyle", {
-        get: function() {
-          return this.ctx.strokeStyle;
-        },
-        set: function(value) {
-          var rgba = getRGBA(value);
-
-          this.ctx.strokeStyle = rgba.style;
-          this.ctx.isStrokeTransparent = rgba.a === 0;
-          this.ctx.strokeOpacity = rgba.a;
-
-          if (rgba.a === 0) {
-            this.pdf.setDrawColor(255, 255, 255);
-          } else if (rgba.a === 1) {
-            this.pdf.setDrawColor(rgba.r, rgba.g, rgba.b);
-          } else {
-            this.pdf.setDrawColor(rgba.r, rgba.g, rgba.b);
-          }
-        }
-      });
-
-      /**
-       * Sets or returns the style of the end caps for a line
-       *
-       * @name lineCap
-       * @default butt
-       * @property {(butt|round|square)} lineCap butt A flat edge is added to each end of the line <br/>
-       * round A rounded end cap is added to each end of the line<br/>
-       * square A square end cap is added to each end of the line<br/>
-       */
-      Object.defineProperty(this, "lineCap", {
-        get: function() {
-          return this.ctx.lineCap;
-        },
-        set: function(value) {
-          if (["butt", "round", "square"].indexOf(value) !== -1) {
-            this.ctx.lineCap = value;
-            this.pdf.setLineCap(value);
-          }
-        }
-      });
-
-      /**
-       * Sets or returns the current line width
-       *
-       * @name lineWidth
-       * @default 1
-       * @property {number} lineWidth The current line width, in pixels
-       */
-      Object.defineProperty(this, "lineWidth", {
-        get: function() {
-          return this.ctx.lineWidth;
-        },
-        set: function(value) {
-          if (!isNaN(value)) {
-            this.ctx.lineWidth = value;
-            this.pdf.setLineWidth(value);
-          }
-        }
-      });
-
-      /**
-       * Sets or returns the type of corner created, when two lines meet
-       */
-      Object.defineProperty(this, "lineJoin", {
-        get: function() {
-          return this.ctx.lineJoin;
-        },
-        set: function(value) {
-          if (["bevel", "round", "miter"].indexOf(value) !== -1) {
-            this.ctx.lineJoin = value;
-            this.pdf.setLineJoin(value);
-          }
-        }
-      });
-
-      /**
-       * A number specifying the miter limit ratio in coordinate space units. Zero, negative, Infinity, and NaN values are ignored. The default value is 10.0.
-       *
-       * @name miterLimit
-       * @default 10
-       */
-      Object.defineProperty(this, "miterLimit", {
-        get: function() {
-          return this.ctx.miterLimit;
-        },
-        set: function(value) {
-          if (!isNaN(value)) {
-            this.ctx.miterLimit = value;
-            this.pdf.setMiterLimit(value);
-          }
-        }
-      });
-
-      Object.defineProperty(this, "textBaseline", {
-        get: function() {
-          return this.ctx.textBaseline;
-        },
-        set: function(value) {
-          this.ctx.textBaseline = value;
-        }
-      });
-
-      Object.defineProperty(this, "textAlign", {
-        get: function() {
-          return this.ctx.textAlign;
-        },
-        set: function(value) {
-          if (["right", "end", "center", "left", "start"].indexOf(value) !== -1) {
-            this.ctx.textAlign = value;
-          }
-        }
-      });
-
-      var _fontFaceMap = null;
-
-      function getFontFaceMap(pdf, fontFaces) {
-        if (_fontFaceMap === null) {
-          var fontMap = pdf.getFontList();
-
-          var convertedFontFaces = convertToFontFaces(fontMap);
-
-          _fontFaceMap = buildFontFaceMap(convertedFontFaces.concat(fontFaces));
-        }
-
-        return _fontFaceMap;
+        _fontFaceMap = buildFontFaceMap(convertedFontFaces.concat(fontFaces));
       }
 
-      function convertToFontFaces(fontMap) {
-        var fontFaces = [];
+      return _fontFaceMap;
+    }
 
-        Object.keys(fontMap).forEach(function(family) {
-          var styles = fontMap[family];
+    function convertToFontFaces(fontMap) {
+      var fontFaces = [];
 
-          styles.forEach(function(style) {
-            var fontFace = null;
+      Object.keys(fontMap).forEach(function(family) {
+        var styles = fontMap[family];
 
-            switch (style) {
-              case "bold":
-                fontFace = {
-                  family: family,
-                  weight: "bold"
-                };
-                break;
+        styles.forEach(function(style) {
+          var fontFace = null;
 
-              case "italic":
-                fontFace = {
-                  family: family,
-                  style: "italic"
-                };
-                break;
-
-              case "bolditalic":
-                fontFace = {
-                  family: family,
-                  weight: "bold",
-                  style: "italic"
-                };
-                break;
-
-              case "":
-              case "normal":
-                fontFace = {
-                  family: family
-                };
-                break;
-            }
-
-            // If font-face is still null here, it is a font with some styling we don't recognize and
-            // cannot map or it is a font added via the fontFaces option of .html().
-            if (fontFace !== null) {
-              fontFace.ref = {
-                name: family,
-                style: style
+          switch (style) {
+            case "bold":
+              fontFace = {
+                family: family,
+                weight: "bold"
               };
+              break;
 
-              fontFaces.push(fontFace);
-            }
-          });
+            case "italic":
+              fontFace = {
+                family: family,
+                style: "italic"
+              };
+              break;
+
+            case "bolditalic":
+              fontFace = {
+                family: family,
+                weight: "bold",
+                style: "italic"
+              };
+              break;
+
+            case "":
+            case "normal":
+              fontFace = {
+                family: family
+              };
+              break;
+          }
+
+          // If font-face is still null here, it is a font with some styling we don't recognize and
+          // cannot map or it is a font added via the fontFaces option of .html().
+          if (fontFace !== null) {
+            fontFace.ref = {
+              name: family,
+              style: style
+            };
+
+            fontFaces.push(fontFace);
+          }
         });
-
-        return fontFaces;
-      }
-
-      var _fontFaces = null;
-      /**
-       * A map of available font-faces, as passed in the options of
-       * .html(). If set a limited implementation of the font style matching
-       * algorithm defined by https://www.w3.org/TR/css-fonts-3/#font-matching-algorithm
-       * will be used. If not set it will fallback to previous behavior.
-       */
-
-      Object.defineProperty(this, "fontFaces", {
-        get: function() {
-          return _fontFaces;
-        },
-        set: function(value) {
-          _fontFaceMap = null;
-          _fontFaces = value;
-        }
       });
 
-      Object.defineProperty(this, "font", {
-        get: function() {
-          return this.ctx.font;
-        },
-        set: function(value) {
-          this.ctx.font = value;
-          var rx, matches;
+      return fontFaces;
+    }
 
-          //source: https://stackoverflow.com/a/10136041
-          // eslint-disable-next-line no-useless-escape
-          rx = /^\s*(?=(?:(?:[-a-z]+\s*){0,2}(italic|oblique))?)(?=(?:(?:[-a-z]+\s*){0,2}(small-caps))?)(?=(?:(?:[-a-z]+\s*){0,2}(bold(?:er)?|lighter|[1-9]00))?)(?:(?:normal|\1|\2|\3)\s*){0,3}((?:xx?-)?(?:small|large)|medium|smaller|larger|[.\d]+(?:\%|in|[cem]m|ex|p[ctx]))(?:\s*\/\s*(normal|[.\d]+(?:\%|in|[cem]m|ex|p[ctx])))?\s*([-_,\"\'\sa-z]+?)\s*$/i;
-          matches = rx.exec(value);
-          if (matches !== null) {
-            var fontStyle = matches[1];
-            var fontVariant = matches[2];
-            var fontWeight = matches[3];
-            var fontSize = matches[4];
-            var lineHeight = matches[5];
-            var fontFamily = matches[6];
-          } else {
-            return;
-          }
-          var rxFontSize = /^([.\d]+)((?:%|in|[cem]m|ex|p[ctx]))$/i;
-          var fontSizeUnit = rxFontSize.exec(fontSize)[2];
+    var _fontFaces = null;
+    /**
+     * A map of available font-faces, as passed in the options of
+     * .html(). If set a limited implementation of the font style matching
+     * algorithm defined by https://www.w3.org/TR/css-fonts-3/#font-matching-algorithm
+     * will be used. If not set it will fallback to previous behavior.
+     */
 
-          if ("px" === fontSizeUnit) {
-            fontSize = Math.floor(
-              parseFloat(fontSize) * this.pdf.internal.scaleFactor
-            );
-          } else if ("em" === fontSizeUnit) {
-            fontSize = Math.floor(parseFloat(fontSize) * this.pdf.getFontSize());
-          } else {
-            fontSize = Math.floor(
-              parseFloat(fontSize) * this.pdf.internal.scaleFactor
-            );
-          }
+    Object.defineProperty(this, "fontFaces", {
+      get: function() {
+        return _fontFaces;
+      },
+      set: function(value) {
+        _fontFaceMap = null;
+        _fontFaces = value;
+      }
+    });
 
-          this.pdf.setFontSize(fontSize);
-          var parts = parseFontFamily(fontFamily);
+    Object.defineProperty(this, "font", {
+      get: function() {
+        return this.ctx.font;
+      },
+      set: function(value) {
+        this.ctx.font = value;
+        var rx, matches;
 
-          if (this.fontFaces) {
-            var fontFaceMap = getFontFaceMap(this.pdf, this.fontFaces);
+        //source: https://stackoverflow.com/a/10136041
+        // eslint-disable-next-line no-useless-escape
+        rx = /^\s*(?=(?:(?:[-a-z]+\s*){0,2}(italic|oblique))?)(?=(?:(?:[-a-z]+\s*){0,2}(small-caps))?)(?=(?:(?:[-a-z]+\s*){0,2}(bold(?:er)?|lighter|[1-9]00))?)(?:(?:normal|\1|\2|\3)\s*){0,3}((?:xx?-)?(?:small|large)|medium|smaller|larger|[.\d]+(?:\%|in|[cem]m|ex|p[ctx]))(?:\s*\/\s*(normal|[.\d]+(?:\%|in|[cem]m|ex|p[ctx])))?\s*([-_,\"\'\sa-z]+?)\s*$/i;
+        matches = rx.exec(value);
+        if (matches !== null) {
+          var fontStyle = matches[1];
+          var fontVariant = matches[2];
+          var fontWeight = matches[3];
+          var fontSize = matches[4];
+          var lineHeight = matches[5];
+          var fontFamily = matches[6];
+        } else {
+          return;
+        }
+        var rxFontSize = /^([.\d]+)((?:%|in|[cem]m|ex|p[ctx]))$/i;
+        var fontSizeUnit = rxFontSize.exec(fontSize)[2];
 
-            var rules = parts.map(function(ff) {
-              return {
-                family: ff,
-                stretch: "normal", // TODO: Extract font-stretch from font rule (perhaps write proper parser for it?)
-                weight: fontWeight,
-                style: fontStyle
-              };
-            });
+        if ("px" === fontSizeUnit) {
+          fontSize = Math.floor(
+            parseFloat(fontSize) * this.pdf.internal.scaleFactor
+          );
+        } else if ("em" === fontSizeUnit) {
+          fontSize = Math.floor(parseFloat(fontSize) * this.pdf.getFontSize());
+        } else {
+          fontSize = Math.floor(
+            parseFloat(fontSize) * this.pdf.internal.scaleFactor
+          );
+        }
 
-            var font = resolveFontFace(fontFaceMap, rules);
-            this.pdf.setFont(font.ref.name, font.ref.style);
-            return;
-          }
+        this.pdf.setFontSize(fontSize);
+        var parts = parseFontFamily(fontFamily);
 
-          var style = "";
+        if (this.fontFaces) {
+          var fontFaceMap = getFontFaceMap(this.pdf, this.fontFaces);
+
+          var rules = parts.map(function(ff) {
+            return {
+              family: ff,
+              stretch: "normal", // TODO: Extract font-stretch from font rule (perhaps write proper parser for it?)
+              weight: fontWeight,
+              style: fontStyle
+            };
+          });
+
+          var font = resolveFontFace(fontFaceMap, rules);
+          this.pdf.setFont(font.ref.name, font.ref.style);
+          return;
+        }
+
+        var style = "";
+        if (
+          fontWeight === "bold" ||
+          parseInt(fontWeight, 10) >= 700 ||
+          fontStyle === "bold"
+        ) {
+          style = "bold";
+        }
+
+        if (fontStyle === "italic") {
+          style += "italic";
+        }
+
+        if (style.length === 0) {
+          style = "normal";
+        }
+        var jsPdfFontName = "";
+
+        var fallbackFonts = {
+          arial: "Helvetica",
+          Arial: "Helvetica",
+          verdana: "Helvetica",
+          Verdana: "Helvetica",
+          helvetica: "Helvetica",
+          Helvetica: "Helvetica",
+          "sans-serif": "Helvetica",
+          fixed: "Courier",
+          monospace: "Courier",
+          terminal: "Courier",
+          cursive: "Times",
+          fantasy: "Times",
+          serif: "Times"
+        };
+
+        for (var i = 0; i < parts.length; i++) {
           if (
-            fontWeight === "bold" ||
-            parseInt(fontWeight, 10) >= 700 ||
-            fontStyle === "bold"
+            this.pdf.internal.getFont(parts[i], style, {
+              noFallback: true,
+              disableWarning: true
+            }) !== undefined
           ) {
+            jsPdfFontName = parts[i];
+            break;
+          } else if (
+            style === "bolditalic" &&
+            this.pdf.internal.getFont(parts[i], "bold", {
+              noFallback: true,
+              disableWarning: true
+            }) !== undefined
+          ) {
+            jsPdfFontName = parts[i];
             style = "bold";
-          }
-
-          if (fontStyle === "italic") {
-            style += "italic";
-          }
-
-          if (style.length === 0) {
-            style = "normal";
-          }
-          var jsPdfFontName = "";
-
-          var fallbackFonts = {
-            arial: "Helvetica",
-            Arial: "Helvetica",
-            verdana: "Helvetica",
-            Verdana: "Helvetica",
-            helvetica: "Helvetica",
-            Helvetica: "Helvetica",
-            "sans-serif": "Helvetica",
-            fixed: "Courier",
-            monospace: "Courier",
-            terminal: "Courier",
-            cursive: "Times",
-            fantasy: "Times",
-            serif: "Times"
-          };
-
-          for (var i = 0; i < parts.length; i++) {
-            if (
-              this.pdf.internal.getFont(parts[i], style, {
-                noFallback: true,
-                disableWarning: true
-              }) !== undefined
-            ) {
-              jsPdfFontName = parts[i];
-              break;
-            } else if (
-              style === "bolditalic" &&
-              this.pdf.internal.getFont(parts[i], "bold", {
-                noFallback: true,
-                disableWarning: true
-              }) !== undefined
-            ) {
-              jsPdfFontName = parts[i];
-              style = "bold";
-            } else if (
-              this.pdf.internal.getFont(parts[i], "normal", {
-                noFallback: true,
-                disableWarning: true
-              }) !== undefined
-            ) {
-              jsPdfFontName = parts[i];
-              style = "normal";
-              break;
-            }
-          }
-          if (jsPdfFontName === "") {
-            for (var j = 0; j < parts.length; j++) {
-              if (fallbackFonts[parts[j]]) {
-                jsPdfFontName = fallbackFonts[parts[j]];
-                break;
-              }
-            }
-          }
-          jsPdfFontName = jsPdfFontName === "" ? "Times" : jsPdfFontName;
-          this.pdf.setFont(jsPdfFontName, style);
-        }
-      });
-
-      Object.defineProperty(this, "globalCompositeOperation", {
-        get: function() {
-          return this.ctx.globalCompositeOperation;
-        },
-        set: function(value) {
-          this.ctx.globalCompositeOperation = value;
-        }
-      });
-
-      Object.defineProperty(this, "globalAlpha", {
-        get: function() {
-          return this.ctx.globalAlpha;
-        },
-        set: function(value) {
-          this.ctx.globalAlpha = value;
-        }
-      });
-
-      // Not HTML API
-      Object.defineProperty(this, "ignoreClearRect", {
-        get: function() {
-          return this.ctx.ignoreClearRect;
-        },
-        set: function(value) {
-          this.ctx.ignoreClearRect = Boolean(value);
-        }
-      });
-    };
-
-    Context2D.prototype.fill = function() {
-      pathPreProcess.call(this, "fill", false);
-    };
-
-    /**
-     * Actually draws the path you have defined
-     *
-     * @name stroke
-     * @function
-     * @description The stroke() method actually draws the path you have defined with all those moveTo() and lineTo() methods. The default color is black.
-     */
-    Context2D.prototype.stroke = function() {
-      pathPreProcess.call(this, "stroke", false);
-    };
-
-    /**
-     * Begins a path, or resets the current
-     *
-     * @name beginPath
-     * @function
-     * @description The beginPath() method begins a path, or resets the current path.
-     */
-    Context2D.prototype.beginPath = function() {
-      this.path = [
-        {
-          type: "begin"
-        }
-      ];
-    };
-
-    /**
-     * Moves the path to the specified point in the canvas, without creating a line
-     *
-     * @name moveTo
-     * @function
-     * @param x {Number} The x-coordinate of where to move the path to
-     * @param y {Number} The y-coordinate of where to move the path to
-     */
-    Context2D.prototype.moveTo = function(x, y) {
-      if (isNaN(x) || isNaN(y)) {
-        console.error("jsPDF.context2d.moveTo: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.moveTo");
-      }
-
-      var pt = this.ctx.transform.applyToPoint(new Point(x, y));
-
-      this.path.push({
-        type: "mt",
-        x: pt.x,
-        y: pt.y
-      });
-      this.ctx.lastPoint = new Point(x, y);
-    };
-
-    /**
-     * Creates a path from the current point back to the starting point
-     *
-     * @name closePath
-     * @function
-     * @description The closePath() method creates a path from the current point back to the starting point.
-     */
-    Context2D.prototype.closePath = function() {
-      var pathBegin = new Point(0, 0);
-      var i = 0;
-      for (i = this.path.length - 1; i !== -1; i--) {
-        if (this.path[i].type === "begin") {
-          if (
-            typeof this.path[i + 1] === "object" &&
-            typeof this.path[i + 1].x === "number"
+          } else if (
+            this.pdf.internal.getFont(parts[i], "normal", {
+              noFallback: true,
+              disableWarning: true
+            }) !== undefined
           ) {
-            pathBegin = new Point(this.path[i + 1].x, this.path[i + 1].y);
-            this.path.push({
-              type: "lt",
-              x: pathBegin.x,
-              y: pathBegin.y
-            });
+            jsPdfFontName = parts[i];
+            style = "normal";
             break;
           }
         }
+        if (jsPdfFontName === "") {
+          for (var j = 0; j < parts.length; j++) {
+            if (fallbackFonts[parts[j]]) {
+              jsPdfFontName = fallbackFonts[parts[j]];
+              break;
+            }
+          }
+        }
+        jsPdfFontName = jsPdfFontName === "" ? "Times" : jsPdfFontName;
+        this.pdf.setFont(jsPdfFontName, style);
       }
-      if (
-        typeof this.path[i + 2] === "object" &&
-        typeof this.path[i + 2].x === "number"
-      ) {
-        this.path.push(JSON.parse(JSON.stringify(this.path[i + 2])));
+    });
+
+    Object.defineProperty(this, "globalCompositeOperation", {
+      get: function() {
+        return this.ctx.globalCompositeOperation;
+      },
+      set: function(value) {
+        this.ctx.globalCompositeOperation = value;
       }
-      this.path.push({
-        type: "close"
-      });
-      this.ctx.lastPoint = new Point(pathBegin.x, pathBegin.y);
-    };
+    });
 
-    /**
-     * Adds a new point and creates a line to that point from the last specified point in the canvas
-     *
-     * @name lineTo
-     * @function
-     * @param x The x-coordinate of where to create the line to
-     * @param y The y-coordinate of where to create the line to
-     * @description The lineTo() method adds a new point and creates a line TO that point FROM the last specified point in the canvas (this method does not draw the line).
-     */
-    Context2D.prototype.lineTo = function(x, y) {
-      if (isNaN(x) || isNaN(y)) {
-        console.error("jsPDF.context2d.lineTo: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.lineTo");
+    Object.defineProperty(this, "globalAlpha", {
+      get: function() {
+        return this.ctx.globalAlpha;
+      },
+      set: function(value) {
+        this.ctx.globalAlpha = value;
       }
+    });
 
-      var pt = this.ctx.transform.applyToPoint(new Point(x, y));
-
-      this.path.push({
-        type: "lt",
-        x: pt.x,
-        y: pt.y
-      });
-      this.ctx.lastPoint = new Point(pt.x, pt.y);
-    };
-
-    /**
-     * Clips a region of any shape and size from the original canvas
-     *
-     * @name clip
-     * @function
-     * @description The clip() method clips a region of any shape and size from the original canvas.
-     */
-    Context2D.prototype.clip = function() {
-      this.ctx.clip_path = JSON.parse(JSON.stringify(this.path));
-      pathPreProcess.call(this, null, true);
-    };
-
-    /**
-     * Creates a cubic Bézier curve
-     *
-     * @name quadraticCurveTo
-     * @function
-     * @param cpx {Number} The x-coordinate of the Bézier control point
-     * @param cpy {Number} The y-coordinate of the Bézier control point
-     * @param x {Number} The x-coordinate of the ending point
-     * @param y {Number} The y-coordinate of the ending point
-     * @description The quadraticCurveTo() method adds a point to the current path by using the specified control points that represent a quadratic Bézier curve.<br /><br /> A quadratic Bézier curve requires two points. The first point is a control point that is used in the quadratic Bézier calculation and the second point is the ending point for the curve. The starting point for the curve is the last point in the current path. If a path does not exist, use the beginPath() and moveTo() methods to define a starting point.
-     */
-    Context2D.prototype.quadraticCurveTo = function(cpx, cpy, x, y) {
-      if (isNaN(x) || isNaN(y) || isNaN(cpx) || isNaN(cpy)) {
-        console.error(
-          "jsPDF.context2d.quadraticCurveTo: Invalid arguments",
-          arguments
-        );
-        throw new Error(
-          "Invalid arguments passed to jsPDF.context2d.quadraticCurveTo"
-        );
+    // Not HTML API
+    Object.defineProperty(this, "ignoreClearRect", {
+      get: function() {
+        return this.ctx.ignoreClearRect;
+      },
+      set: function(value) {
+        this.ctx.ignoreClearRect = Boolean(value);
       }
+    });
 
-      var pt0 = this.ctx.transform.applyToPoint(new Point(x, y));
-      var pt1 = this.ctx.transform.applyToPoint(new Point(cpx, cpy));
+    return this;
+  };
 
-      this.path.push({
-        type: "qct",
-        x1: pt1.x,
-        y1: pt1.y,
-        x: pt0.x,
-        y: pt0.y
-      });
-      this.ctx.lastPoint = new Point(pt0.x, pt0.y);
-    };
+  Context2D.prototype.fill = function() {
+    pathPreProcess.call(this, "fill", false);
+  };
 
-    /**
-     * Creates a cubic Bézier curve
-     *
-     * @name bezierCurveTo
-     * @function
-     * @param cp1x {Number} The x-coordinate of the first Bézier control point
-     * @param cp1y {Number} The y-coordinate of the first Bézier control point
-     * @param cp2x {Number} The x-coordinate of the second Bézier control point
-     * @param cp2y {Number} The y-coordinate of the second Bézier control point
-     * @param x {Number} The x-coordinate of the ending point
-     * @param y {Number} The y-coordinate of the ending point
-     * @description The bezierCurveTo() method adds a point to the current path by using the specified control points that represent a cubic Bézier curve. <br /><br />A cubic bezier curve requires three points. The first two points are control points that are used in the cubic Bézier calculation and the last point is the ending point for the curve.  The starting point for the curve is the last point in the current path. If a path does not exist, use the beginPath() and moveTo() methods to define a starting point.
-     */
-    Context2D.prototype.bezierCurveTo = function(cp1x, cp1y, cp2x, cp2y, x, y) {
-      if (
-        isNaN(x) ||
-        isNaN(y) ||
-        isNaN(cp1x) ||
-        isNaN(cp1y) ||
-        isNaN(cp2x) ||
-        isNaN(cp2y)
-      ) {
-        console.error(
-          "jsPDF.context2d.bezierCurveTo: Invalid arguments",
-          arguments
-        );
-        throw new Error(
-          "Invalid arguments passed to jsPDF.context2d.bezierCurveTo"
-        );
+  /**
+   * Actually draws the path you have defined
+   *
+   * @name stroke
+   * @function
+   * @description The stroke() method actually draws the path you have defined with all those moveTo() and lineTo() methods. The default color is black.
+   */
+  Context2D.prototype.stroke = function() {
+    pathPreProcess.call(this, "stroke", false);
+  };
+
+  /**
+   * Begins a path, or resets the current
+   *
+   * @name beginPath
+   * @function
+   * @description The beginPath() method begins a path, or resets the current path.
+   */
+  Context2D.prototype.beginPath = function() {
+    this.path = [
+      {
+        type: "begin"
       }
-      var pt0 = this.ctx.transform.applyToPoint(new Point(x, y));
-      var pt1 = this.ctx.transform.applyToPoint(new Point(cp1x, cp1y));
-      var pt2 = this.ctx.transform.applyToPoint(new Point(cp2x, cp2y));
+    ];
+  };
 
-      this.path.push({
-        type: "bct",
-        x1: pt1.x,
-        y1: pt1.y,
-        x2: pt2.x,
-        y2: pt2.y,
-        x: pt0.x,
-        y: pt0.y
-      });
-      this.ctx.lastPoint = new Point(pt0.x, pt0.y);
-    };
+  /**
+   * Moves the path to the specified point in the canvas, without creating a line
+   *
+   * @name moveTo
+   * @function
+   * @param x {Number} The x-coordinate of where to move the path to
+   * @param y {Number} The y-coordinate of where to move the path to
+   */
+  Context2D.prototype.moveTo = function(x, y) {
+    if (isNaN(x) || isNaN(y)) {
+      console.error("jsPDF.context2d.moveTo: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.moveTo");
+    }
 
-    /**
-     * Creates an arc/curve (used to create circles, or parts of circles)
-     *
-     * @name arc
-     * @function
-     * @param x {Number} The x-coordinate of the center of the circle
-     * @param y {Number} The y-coordinate of the center of the circle
-     * @param radius {Number} The radius of the circle
-     * @param startAngle {Number} The starting angle, in radians (0 is at the 3 o'clock position of the arc's circle)
-     * @param endAngle {Number} The ending angle, in radians
-     * @param counterclockwise {Boolean} Optional. Specifies whether the drawing should be counterclockwise or clockwise. False is default, and indicates clockwise, while true indicates counter-clockwise.
-     * @description The arc() method creates an arc/curve (used to create circles, or parts of circles).
-     */
-    Context2D.prototype.arc = function(
-      x,
-      y,
-      radius,
-      startAngle,
-      endAngle,
-      counterclockwise
+    var pt = this.ctx.transform.applyToPoint(new Point(x, y));
+
+    this.path.push({
+      type: "mt",
+      x: pt.x,
+      y: pt.y
+    });
+    this.ctx.lastPoint = new Point(x, y);
+  };
+
+  /**
+   * Creates a path from the current point back to the starting point
+   *
+   * @name closePath
+   * @function
+   * @description The closePath() method creates a path from the current point back to the starting point.
+   */
+  Context2D.prototype.closePath = function() {
+    var pathBegin = new Point(0, 0);
+    var i = 0;
+    for (i = this.path.length - 1; i !== -1; i--) {
+      if (this.path[i].type === "begin") {
+        if (
+          typeof this.path[i + 1] === "object" &&
+          typeof this.path[i + 1].x === "number"
+        ) {
+          pathBegin = new Point(this.path[i + 1].x, this.path[i + 1].y);
+          this.path.push({
+            type: "lt",
+            x: pathBegin.x,
+            y: pathBegin.y
+          });
+          break;
+        }
+      }
+    }
+    if (
+      typeof this.path[i + 2] === "object" &&
+      typeof this.path[i + 2].x === "number"
     ) {
-      if (
-        isNaN(x) ||
-        isNaN(y) ||
-        isNaN(radius) ||
-        isNaN(startAngle) ||
-        isNaN(endAngle)
-      ) {
-        console.error("jsPDF.context2d.arc: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.arc");
-      }
-      counterclockwise = Boolean(counterclockwise);
+      this.path.push(JSON.parse(JSON.stringify(this.path[i + 2])));
+    }
+    this.path.push({
+      type: "close"
+    });
+    this.ctx.lastPoint = new Point(pathBegin.x, pathBegin.y);
+  };
 
-      if (!this.ctx.transform.isIdentity) {
-        var xpt = this.ctx.transform.applyToPoint(new Point(x, y));
-        x = xpt.x;
-        y = xpt.y;
+  /**
+   * Adds a new point and creates a line to that point from the last specified point in the canvas
+   *
+   * @name lineTo
+   * @function
+   * @param x The x-coordinate of where to create the line to
+   * @param y The y-coordinate of where to create the line to
+   * @description The lineTo() method adds a new point and creates a line TO that point FROM the last specified point in the canvas (this method does not draw the line).
+   */
+  Context2D.prototype.lineTo = function(x, y) {
+    if (isNaN(x) || isNaN(y)) {
+      console.error("jsPDF.context2d.lineTo: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.lineTo");
+    }
 
-        var x_radPt = this.ctx.transform.applyToPoint(new Point(0, radius));
-        var x_radPt0 = this.ctx.transform.applyToPoint(new Point(0, 0));
-        radius = Math.sqrt(
-          Math.pow(x_radPt.x - x_radPt0.x, 2) +
-            Math.pow(x_radPt.y - x_radPt0.y, 2)
-        );
-      }
-      if (Math.abs(endAngle - startAngle) >= 2 * Math.PI) {
-        startAngle = 0;
-        endAngle = 2 * Math.PI;
-      }
+    var pt = this.ctx.transform.applyToPoint(new Point(x, y));
 
-      this.path.push({
-        type: "arc",
-        x: x,
-        y: y,
-        radius: radius,
-        startAngle: startAngle,
-        endAngle: endAngle,
-        counterclockwise: counterclockwise
-      });
-      // this.ctx.lastPoint(new Point(pt.x,pt.y));
-    };
+    this.path.push({
+      type: "lt",
+      x: pt.x,
+      y: pt.y
+    });
+    this.ctx.lastPoint = new Point(pt.x, pt.y);
+  };
 
-    /**
-     * Creates an arc/curve between two tangents
-     *
-     * @name arcTo
-     * @function
-     * @param x1 {Number} The x-coordinate of the first tangent
-     * @param y1 {Number} The y-coordinate of the first tangent
-     * @param x2 {Number} The x-coordinate of the second tangent
-     * @param y2 {Number} The y-coordinate of the second tangent
-     * @param radius The radius of the arc
-     * @description The arcTo() method creates an arc/curve between two tangents on the canvas.
-     */
-    // eslint-disable-next-line no-unused-vars
-    Context2D.prototype.arcTo = function(x1, y1, x2, y2, radius) {
-      throw new Error("arcTo not implemented.");
-    };
+  /**
+   * Clips a region of any shape and size from the original canvas
+   *
+   * @name clip
+   * @function
+   * @description The clip() method clips a region of any shape and size from the original canvas.
+   */
+  Context2D.prototype.clip = function() {
+    this.ctx.clip_path = JSON.parse(JSON.stringify(this.path));
+    pathPreProcess.call(this, null, true);
+  };
 
-    /**
-     * Creates a rectangle
-     *
-     * @name rect
-     * @function
-     * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
-     * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
-     * @param w {Number} The width of the rectangle, in pixels
-     * @param h {Number} The height of the rectangle, in pixels
-     * @description The rect() method creates a rectangle.
-     */
-    Context2D.prototype.rect = function(x, y, w, h) {
-      if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
-        console.error("jsPDF.context2d.rect: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.rect");
-      }
-      this.moveTo(x, y);
-      this.lineTo(x + w, y);
-      this.lineTo(x + w, y + h);
-      this.lineTo(x, y + h);
-      this.lineTo(x, y);
-      this.lineTo(x + w, y);
-      this.lineTo(x, y);
-    };
+  /**
+   * Creates a cubic Bézier curve
+   *
+   * @name quadraticCurveTo
+   * @function
+   * @param cpx {Number} The x-coordinate of the Bézier control point
+   * @param cpy {Number} The y-coordinate of the Bézier control point
+   * @param x {Number} The x-coordinate of the ending point
+   * @param y {Number} The y-coordinate of the ending point
+   * @description The quadraticCurveTo() method adds a point to the current path by using the specified control points that represent a quadratic Bézier curve.<br /><br /> A quadratic Bézier curve requires two points. The first point is a control point that is used in the quadratic Bézier calculation and the second point is the ending point for the curve. The starting point for the curve is the last point in the current path. If a path does not exist, use the beginPath() and moveTo() methods to define a starting point.
+   */
+  Context2D.prototype.quadraticCurveTo = function(cpx, cpy, x, y) {
+    if (isNaN(x) || isNaN(y) || isNaN(cpx) || isNaN(cpy)) {
+      console.error(
+        "jsPDF.context2d.quadraticCurveTo: Invalid arguments",
+        arguments
+      );
+      throw new Error(
+        "Invalid arguments passed to jsPDF.context2d.quadraticCurveTo"
+      );
+    }
 
-    /**
-     * Draws a "filled" rectangle
-     *
-     * @name fillRect
-     * @function
-     * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
-     * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
-     * @param w {Number} The width of the rectangle, in pixels
-     * @param h {Number} The height of the rectangle, in pixels
-     * @description The fillRect() method draws a "filled" rectangle. The default color of the fill is black.
-     */
-    Context2D.prototype.fillRect = function(x, y, w, h) {
-      if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
-        console.error("jsPDF.context2d.fillRect: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.fillRect");
-      }
-      if (isFillTransparent.call(this)) {
-        return;
-      }
-      var tmp = {};
-      if (this.lineCap !== "butt") {
-        tmp.lineCap = this.lineCap;
-        this.lineCap = "butt";
-      }
-      if (this.lineJoin !== "miter") {
-        tmp.lineJoin = this.lineJoin;
-        this.lineJoin = "miter";
-      }
+    var pt0 = this.ctx.transform.applyToPoint(new Point(x, y));
+    var pt1 = this.ctx.transform.applyToPoint(new Point(cpx, cpy));
 
-      this.beginPath();
-      this.rect(x, y, w, h);
-      this.fill();
+    this.path.push({
+      type: "qct",
+      x1: pt1.x,
+      y1: pt1.y,
+      x: pt0.x,
+      y: pt0.y
+    });
+    this.ctx.lastPoint = new Point(pt0.x, pt0.y);
+  };
 
-      if (tmp.hasOwnProperty("lineCap")) {
-        this.lineCap = tmp.lineCap;
-      }
-      if (tmp.hasOwnProperty("lineJoin")) {
-        this.lineJoin = tmp.lineJoin;
-      }
-    };
+  /**
+   * Creates a cubic Bézier curve
+   *
+   * @name bezierCurveTo
+   * @function
+   * @param cp1x {Number} The x-coordinate of the first Bézier control point
+   * @param cp1y {Number} The y-coordinate of the first Bézier control point
+   * @param cp2x {Number} The x-coordinate of the second Bézier control point
+   * @param cp2y {Number} The y-coordinate of the second Bézier control point
+   * @param x {Number} The x-coordinate of the ending point
+   * @param y {Number} The y-coordinate of the ending point
+   * @description The bezierCurveTo() method adds a point to the current path by using the specified control points that represent a cubic Bézier curve. <br /><br />A cubic bezier curve requires three points. The first two points are control points that are used in the cubic Bézier calculation and the last point is the ending point for the curve.  The starting point for the curve is the last point in the current path. If a path does not exist, use the beginPath() and moveTo() methods to define a starting point.
+   */
+  Context2D.prototype.bezierCurveTo = function(cp1x, cp1y, cp2x, cp2y, x, y) {
+    if (
+      isNaN(x) ||
+      isNaN(y) ||
+      isNaN(cp1x) ||
+      isNaN(cp1y) ||
+      isNaN(cp2x) ||
+      isNaN(cp2y)
+    ) {
+      console.error(
+        "jsPDF.context2d.bezierCurveTo: Invalid arguments",
+        arguments
+      );
+      throw new Error(
+        "Invalid arguments passed to jsPDF.context2d.bezierCurveTo"
+      );
+    }
+    var pt0 = this.ctx.transform.applyToPoint(new Point(x, y));
+    var pt1 = this.ctx.transform.applyToPoint(new Point(cp1x, cp1y));
+    var pt2 = this.ctx.transform.applyToPoint(new Point(cp2x, cp2y));
 
-    /**
-     *     Draws a rectangle (no fill)
-     *
-     * @name strokeRect
-     * @function
-     * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
-     * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
-     * @param w {Number} The width of the rectangle, in pixels
-     * @param h {Number} The height of the rectangle, in pixels
-     * @description The strokeRect() method draws a rectangle (no fill). The default color of the stroke is black.
-     */
-    Context2D.prototype.strokeRect = function strokeRect(x, y, w, h) {
-      if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
-        console.error("jsPDF.context2d.strokeRect: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.strokeRect");
-      }
-      if (isStrokeTransparent.call(this)) {
-        return;
-      }
-      this.beginPath();
-      this.rect(x, y, w, h);
-      this.stroke();
-    };
+    this.path.push({
+      type: "bct",
+      x1: pt1.x,
+      y1: pt1.y,
+      x2: pt2.x,
+      y2: pt2.y,
+      x: pt0.x,
+      y: pt0.y
+    });
+    this.ctx.lastPoint = new Point(pt0.x, pt0.y);
+  };
 
-    /**
-     * Clears the specified pixels within a given rectangle
-     *
-     * @name clearRect
-     * @function
-     * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
-     * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
-     * @param w {Number} The width of the rectangle to clear, in pixels
-     * @param h {Number} The height of the rectangle to clear, in pixels
-     * @description We cannot clear PDF commands that were already written to PDF, so we use white instead. <br />
-     * As a special case, read a special flag (ignoreClearRect) and do nothing if it is set.
-     * This results in all calls to clearRect() to do nothing, and keep the canvas transparent.
-     * This flag is stored in the save/restore context and is managed the same way as other drawing states.
-     *
-     */
-    Context2D.prototype.clearRect = function(x, y, w, h) {
-      if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
-        console.error("jsPDF.context2d.clearRect: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.clearRect");
-      }
-      if (this.ignoreClearRect) {
-        return;
-      }
+  /**
+   * Creates an arc/curve (used to create circles, or parts of circles)
+   *
+   * @name arc
+   * @function
+   * @param x {Number} The x-coordinate of the center of the circle
+   * @param y {Number} The y-coordinate of the center of the circle
+   * @param radius {Number} The radius of the circle
+   * @param startAngle {Number} The starting angle, in radians (0 is at the 3 o'clock position of the arc's circle)
+   * @param endAngle {Number} The ending angle, in radians
+   * @param counterclockwise {Boolean} Optional. Specifies whether the drawing should be counterclockwise or clockwise. False is default, and indicates clockwise, while true indicates counter-clockwise.
+   * @description The arc() method creates an arc/curve (used to create circles, or parts of circles).
+   */
+  Context2D.prototype.arc = function(
+    x,
+    y,
+    radius,
+    startAngle,
+    endAngle,
+    counterclockwise
+  ) {
+    if (
+      isNaN(x) ||
+      isNaN(y) ||
+      isNaN(radius) ||
+      isNaN(startAngle) ||
+      isNaN(endAngle)
+    ) {
+      console.error("jsPDF.context2d.arc: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.arc");
+    }
+    counterclockwise = Boolean(counterclockwise);
 
-      this.fillStyle = "#ffffff";
-      this.fillRect(x, y, w, h);
-    };
+    if (!this.ctx.transform.isIdentity) {
+      var xpt = this.ctx.transform.applyToPoint(new Point(x, y));
+      x = xpt.x;
+      y = xpt.y;
 
-    /**
-     * Saves the state of the current context
-     *
-     * @name save
-     * @function
-     */
-    Context2D.prototype.save = function(doStackPush) {
-      doStackPush = typeof doStackPush === "boolean" ? doStackPush : true;
-      var tmpPageNumber = this.pdf.internal.getCurrentPageInfo().pageNumber;
-      for (var i = 0; i < this.pdf.internal.getNumberOfPages(); i++) {
-        this.pdf.setPage(i + 1);
-        this.pdf.internal.out("q");
-      }
-      this.pdf.setPage(tmpPageNumber);
+      var x_radPt = this.ctx.transform.applyToPoint(new Point(0, radius));
+      var x_radPt0 = this.ctx.transform.applyToPoint(new Point(0, 0));
+      radius = Math.sqrt(
+        Math.pow(x_radPt.x - x_radPt0.x, 2) + Math.pow(x_radPt.y - x_radPt0.y, 2)
+      );
+    }
+    if (Math.abs(endAngle - startAngle) >= 2 * Math.PI) {
+      startAngle = 0;
+      endAngle = 2 * Math.PI;
+    }
 
-      if (doStackPush) {
-        this.ctx.fontSize = this.pdf.internal.getFontSize();
-        var ctx = new ContextLayer(this.ctx);
-        this.ctxStack.push(this.ctx);
-        this.ctx = ctx;
-      }
-    };
+    this.path.push({
+      type: "arc",
+      x: x,
+      y: y,
+      radius: radius,
+      startAngle: startAngle,
+      endAngle: endAngle,
+      counterclockwise: counterclockwise
+    });
+    // this.ctx.lastPoint(new Point(pt.x,pt.y));
+  };
 
-    /**
-     * Returns previously saved path state and attributes
-     *
-     * @name restore
-     * @function
-     */
-    Context2D.prototype.restore = function(doStackPop) {
-      doStackPop = typeof doStackPop === "boolean" ? doStackPop : true;
-      var tmpPageNumber = this.pdf.internal.getCurrentPageInfo().pageNumber;
-      for (var i = 0; i < this.pdf.internal.getNumberOfPages(); i++) {
-        this.pdf.setPage(i + 1);
-        this.pdf.internal.out("Q");
-      }
-      this.pdf.setPage(tmpPageNumber);
+  /**
+   * Creates an arc/curve between two tangents
+   *
+   * @name arcTo
+   * @function
+   * @param x1 {Number} The x-coordinate of the first tangent
+   * @param y1 {Number} The y-coordinate of the first tangent
+   * @param x2 {Number} The x-coordinate of the second tangent
+   * @param y2 {Number} The y-coordinate of the second tangent
+   * @param radius The radius of the arc
+   * @description The arcTo() method creates an arc/curve between two tangents on the canvas.
+   */
+  // eslint-disable-next-line no-unused-vars
+  Context2D.prototype.arcTo = function(x1, y1, x2, y2, radius) {
+    throw new Error("arcTo not implemented.");
+  };
 
-      if (doStackPop && this.ctxStack.length !== 0) {
-        this.ctx = this.ctxStack.pop();
-        this.fillStyle = this.ctx.fillStyle;
-        this.strokeStyle = this.ctx.strokeStyle;
-        this.font = this.ctx.font;
-        this.lineCap = this.ctx.lineCap;
-        this.lineWidth = this.ctx.lineWidth;
-        this.lineJoin = this.ctx.lineJoin;
-      }
-    };
+  /**
+   * Creates a rectangle
+   *
+   * @name rect
+   * @function
+   * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
+   * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
+   * @param w {Number} The width of the rectangle, in pixels
+   * @param h {Number} The height of the rectangle, in pixels
+   * @description The rect() method creates a rectangle.
+   */
+  Context2D.prototype.rect = function(x, y, w, h) {
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
+      console.error("jsPDF.context2d.rect: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.rect");
+    }
+    this.moveTo(x, y);
+    this.lineTo(x + w, y);
+    this.lineTo(x + w, y + h);
+    this.lineTo(x, y + h);
+    this.lineTo(x, y);
+    this.lineTo(x + w, y);
+    this.lineTo(x, y);
+  };
 
-    /**
-     * @name toDataURL
-     * @function
-     */
-    Context2D.prototype.toDataURL = function() {
-      throw new Error("toDataUrl not implemented.");
-    };
+  /**
+   * Draws a "filled" rectangle
+   *
+   * @name fillRect
+   * @function
+   * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
+   * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
+   * @param w {Number} The width of the rectangle, in pixels
+   * @param h {Number} The height of the rectangle, in pixels
+   * @description The fillRect() method draws a "filled" rectangle. The default color of the fill is black.
+   */
+  Context2D.prototype.fillRect = function(x, y, w, h) {
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
+      console.error("jsPDF.context2d.fillRect: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.fillRect");
+    }
+    if (isFillTransparent.call(this)) {
+      return;
+    }
+    var tmp = {};
+    if (this.lineCap !== "butt") {
+      tmp.lineCap = this.lineCap;
+      this.lineCap = "butt";
+    }
+    if (this.lineJoin !== "miter") {
+      tmp.lineJoin = this.lineJoin;
+      this.lineJoin = "miter";
+    }
 
-    //helper functions
+    this.beginPath();
+    this.rect(x, y, w, h);
+    this.fill();
 
-    /**
-     * Get the decimal values of r, g, b and a
-     *
-     * @name getRGBA
-     * @function
-     * @private
-     * @ignore
-     */
-    var getRGBA = function(style) {
-      var rxRgb = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/;
-      var rxRgba = /rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/;
-      var rxTransparent = /transparent|rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*0+\s*\)/;
+    if (tmp.hasOwnProperty("lineCap")) {
+      this.lineCap = tmp.lineCap;
+    }
+    if (tmp.hasOwnProperty("lineJoin")) {
+      this.lineJoin = tmp.lineJoin;
+    }
+  };
 
-      var r, g, b, a;
+  /**
+   *     Draws a rectangle (no fill)
+   *
+   * @name strokeRect
+   * @function
+   * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
+   * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
+   * @param w {Number} The width of the rectangle, in pixels
+   * @param h {Number} The height of the rectangle, in pixels
+   * @description The strokeRect() method draws a rectangle (no fill). The default color of the stroke is black.
+   */
+  Context2D.prototype.strokeRect = function strokeRect(x, y, w, h) {
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
+      console.error("jsPDF.context2d.strokeRect: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.strokeRect");
+    }
+    if (isStrokeTransparent.call(this)) {
+      return;
+    }
+    this.beginPath();
+    this.rect(x, y, w, h);
+    this.stroke();
+  };
 
-      if (style.isCanvasGradient === true) {
-        style = style.getColor();
-      }
+  /**
+   * Clears the specified pixels within a given rectangle
+   *
+   * @name clearRect
+   * @function
+   * @param x {Number} The x-coordinate of the upper-left corner of the rectangle
+   * @param y {Number} The y-coordinate of the upper-left corner of the rectangle
+   * @param w {Number} The width of the rectangle to clear, in pixels
+   * @param h {Number} The height of the rectangle to clear, in pixels
+   * @description We cannot clear PDF commands that were already written to PDF, so we use white instead. <br />
+   * As a special case, read a special flag (ignoreClearRect) and do nothing if it is set.
+   * This results in all calls to clearRect() to do nothing, and keep the canvas transparent.
+   * This flag is stored in the save/restore context and is managed the same way as other drawing states.
+   *
+   */
+  Context2D.prototype.clearRect = function(x, y, w, h) {
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) {
+      console.error("jsPDF.context2d.clearRect: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.clearRect");
+    }
+    if (this.ignoreClearRect) {
+      return;
+    }
 
-      if (!style) {
-        return { r: 0, g: 0, b: 0, a: 0, style: style };
-      }
+    this.fillStyle = "#ffffff";
+    this.fillRect(x, y, w, h);
+  };
 
-      if (rxTransparent.test(style)) {
-        r = 0;
-        g = 0;
-        b = 0;
-        a = 0;
+  /**
+   * Saves the state of the current context
+   *
+   * @name save
+   * @function
+   */
+  Context2D.prototype.save = function(doStackPush) {
+    doStackPush = typeof doStackPush === "boolean" ? doStackPush : true;
+    var tmpPageNumber = this.pdf.internal.getCurrentPageInfo().pageNumber;
+    for (var i = 0; i < this.pdf.internal.getNumberOfPages(); i++) {
+      this.pdf.setPage(i + 1);
+      this.pdf.internal.out("q");
+    }
+    this.pdf.setPage(tmpPageNumber);
+
+    if (doStackPush) {
+      this.ctx.fontSize = this.pdf.internal.getFontSize();
+      var ctx = new ContextLayer(this.ctx);
+      this.ctxStack.push(this.ctx);
+      this.ctx = ctx;
+    }
+  };
+
+  /**
+   * Returns previously saved path state and attributes
+   *
+   * @name restore
+   * @function
+   */
+  Context2D.prototype.restore = function(doStackPop) {
+    doStackPop = typeof doStackPop === "boolean" ? doStackPop : true;
+    var tmpPageNumber = this.pdf.internal.getCurrentPageInfo().pageNumber;
+    for (var i = 0; i < this.pdf.internal.getNumberOfPages(); i++) {
+      this.pdf.setPage(i + 1);
+      this.pdf.internal.out("Q");
+    }
+    this.pdf.setPage(tmpPageNumber);
+
+    if (doStackPop && this.ctxStack.length !== 0) {
+      this.ctx = this.ctxStack.pop();
+      this.fillStyle = this.ctx.fillStyle;
+      this.strokeStyle = this.ctx.strokeStyle;
+      this.font = this.ctx.font;
+      this.lineCap = this.ctx.lineCap;
+      this.lineWidth = this.ctx.lineWidth;
+      this.lineJoin = this.ctx.lineJoin;
+    }
+  };
+
+  /**
+   * @name toDataURL
+   * @function
+   */
+  Context2D.prototype.toDataURL = function() {
+    throw new Error("toDataUrl not implemented.");
+  };
+
+  //helper functions
+
+  /**
+   * Get the decimal values of r, g, b and a
+   *
+   * @name getRGBA
+   * @function
+   * @private
+   * @ignore
+   */
+  var getRGBA = function(style) {
+    var rxRgb = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/;
+    var rxRgba = /rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/;
+    var rxTransparent = /transparent|rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*0+\s*\)/;
+
+    var r, g, b, a;
+
+    if (style.isCanvasGradient === true) {
+      style = style.getColor();
+    }
+
+    if (!style) {
+      return { r: 0, g: 0, b: 0, a: 0, style: style };
+    }
+
+    if (rxTransparent.test(style)) {
+      r = 0;
+      g = 0;
+      b = 0;
+      a = 0;
+    } else {
+      var matches = rxRgb.exec(style);
+      if (matches !== null) {
+        r = parseInt(matches[1]);
+        g = parseInt(matches[2]);
+        b = parseInt(matches[3]);
+        a = 1;
       } else {
-        var matches = rxRgb.exec(style);
+        matches = rxRgba.exec(style);
         if (matches !== null) {
           r = parseInt(matches[1]);
           g = parseInt(matches[2]);
           b = parseInt(matches[3]);
-          a = 1;
+          a = parseFloat(matches[4]);
         } else {
-          matches = rxRgba.exec(style);
-          if (matches !== null) {
-            r = parseInt(matches[1]);
-            g = parseInt(matches[2]);
-            b = parseInt(matches[3]);
-            a = parseFloat(matches[4]);
-          } else {
-            a = 1;
+          a = 1;
 
-            if (typeof style === "string" && style.charAt(0) !== "#") {
-              var rgbColor = new RGBColor(style);
-              if (rgbColor.ok) {
-                style = rgbColor.toHex();
-              } else {
-                style = "#000000";
-              }
-            }
-
-            if (style.length === 4) {
-              r = style.substring(1, 2);
-              r += r;
-              g = style.substring(2, 3);
-              g += g;
-              b = style.substring(3, 4);
-              b += b;
+          if (typeof style === "string" && style.charAt(0) !== "#") {
+            var rgbColor = new RGBColor(style);
+            if (rgbColor.ok) {
+              style = rgbColor.toHex();
             } else {
-              r = style.substring(1, 3);
-              g = style.substring(3, 5);
-              b = style.substring(5, 7);
+              style = "#000000";
             }
-            r = parseInt(r, 16);
-            g = parseInt(g, 16);
-            b = parseInt(b, 16);
           }
+
+          if (style.length === 4) {
+            r = style.substring(1, 2);
+            r += r;
+            g = style.substring(2, 3);
+            g += g;
+            b = style.substring(3, 4);
+            b += b;
+          } else {
+            r = style.substring(1, 3);
+            g = style.substring(3, 5);
+            b = style.substring(5, 7);
+          }
+          r = parseInt(r, 16);
+          g = parseInt(g, 16);
+          b = parseInt(b, 16);
         }
       }
-      return { r: r, g: g, b: b, a: a, style: style };
-    };
+    }
+    return { r: r, g: g, b: b, a: a, style: style };
+  };
 
-    /**
-     * @name isFillTransparent
-     * @function
-     * @private
-     * @ignore
-     * @returns {Boolean}
-     */
-    var isFillTransparent = function() {
-      return this.ctx.isFillTransparent || this.globalAlpha == 0;
-    };
+  /**
+   * @name isFillTransparent
+   * @function
+   * @private
+   * @ignore
+   * @returns {Boolean}
+   */
+  var isFillTransparent = function() {
+    return this.ctx.isFillTransparent || this.globalAlpha == 0;
+  };
 
-    /**
-     * @name isStrokeTransparent
-     * @function
-     * @private
-     * @ignore
-     * @returns {Boolean}
-     */
-    var isStrokeTransparent = function() {
-      return Boolean(this.ctx.isStrokeTransparent || this.globalAlpha == 0);
-    };
+  /**
+   * @name isStrokeTransparent
+   * @function
+   * @private
+   * @ignore
+   * @returns {Boolean}
+   */
+  var isStrokeTransparent = function() {
+    return Boolean(this.ctx.isStrokeTransparent || this.globalAlpha == 0);
+  };
 
-    /**
-     * Draws "filled" text on the canvas
-     *
-     * @name fillText
-     * @function
-     * @param text {String} Specifies the text that will be written on the canvas
-     * @param x {Number} The x coordinate where to start painting the text (relative to the canvas)
-     * @param y {Number} The y coordinate where to start painting the text (relative to the canvas)
-     * @param maxWidth {Number} Optional. The maximum allowed width of the text, in pixels
-     * @description The fillText() method draws filled text on the canvas. The default color of the text is black.
-     */
-    Context2D.prototype.fillText = function(text, x, y, maxWidth) {
-      if (isNaN(x) || isNaN(y) || typeof text !== "string") {
-        console.error("jsPDF.context2d.fillText: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.fillText");
-      }
-      maxWidth = isNaN(maxWidth) ? undefined : maxWidth;
-      if (isFillTransparent.call(this)) {
-        return;
-      }
+  /**
+   * Draws "filled" text on the canvas
+   *
+   * @name fillText
+   * @function
+   * @param text {String} Specifies the text that will be written on the canvas
+   * @param x {Number} The x coordinate where to start painting the text (relative to the canvas)
+   * @param y {Number} The y coordinate where to start painting the text (relative to the canvas)
+   * @param maxWidth {Number} Optional. The maximum allowed width of the text, in pixels
+   * @description The fillText() method draws filled text on the canvas. The default color of the text is black.
+   */
+  Context2D.prototype.fillText = function(text, x, y, maxWidth) {
+    if (isNaN(x) || isNaN(y) || typeof text !== "string") {
+      console.error("jsPDF.context2d.fillText: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.fillText");
+    }
+    maxWidth = isNaN(maxWidth) ? undefined : maxWidth;
+    if (isFillTransparent.call(this)) {
+      return;
+    }
 
-      y = getBaseline.call(this, y);
-      var degs = rad2deg(this.ctx.transform.rotation);
+    y = getBaseline.call(this, y);
+    var degs = rad2deg(this.ctx.transform.rotation);
 
-      // We only use X axis as scale hint
-      var scale = this.ctx.transform.scaleX;
+    // We only use X axis as scale hint
+    var scale = this.ctx.transform.scaleX;
 
-      putText.call(this, {
-        text: text,
-        x: x,
-        y: y,
-        scale: scale,
-        angle: degs,
-        align: this.textAlign,
-        maxWidth: maxWidth
+    putText.call(this, {
+      text: text,
+      x: x,
+      y: y,
+      scale: scale,
+      angle: degs,
+      align: this.textAlign,
+      maxWidth: maxWidth
+    });
+  };
+
+  /**
+   * Draws text on the canvas (no fill)
+   *
+   * @name strokeText
+   * @function
+   * @param text {String} Specifies the text that will be written on the canvas
+   * @param x {Number} The x coordinate where to start painting the text (relative to the canvas)
+   * @param y {Number} The y coordinate where to start painting the text (relative to the canvas)
+   * @param maxWidth {Number} Optional. The maximum allowed width of the text, in pixels
+   * @description The strokeText() method draws text (with no fill) on the canvas. The default color of the text is black.
+   */
+  Context2D.prototype.strokeText = function(text, x, y, maxWidth) {
+    if (isNaN(x) || isNaN(y) || typeof text !== "string") {
+      console.error("jsPDF.context2d.strokeText: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.strokeText");
+    }
+    if (isStrokeTransparent.call(this)) {
+      return;
+    }
+
+    maxWidth = isNaN(maxWidth) ? undefined : maxWidth;
+    y = getBaseline.call(this, y);
+
+    var degs = rad2deg(this.ctx.transform.rotation);
+    var scale = this.ctx.transform.scaleX;
+
+    putText.call(this, {
+      text: text,
+      x: x,
+      y: y,
+      scale: scale,
+      renderingMode: "stroke",
+      angle: degs,
+      align: this.textAlign,
+      maxWidth: maxWidth
+    });
+  };
+
+  /**
+   * Returns an object that contains the width of the specified text
+   *
+   * @name measureText
+   * @function
+   * @param text {String} The text to be measured
+   * @description The measureText() method returns an object that contains the width of the specified text, in pixels.
+   * @returns {Number}
+   */
+  Context2D.prototype.measureText = function(text) {
+    if (typeof text !== "string") {
+      console.error("jsPDF.context2d.measureText: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.measureText");
+    }
+    var pdf = this.pdf;
+    var k = this.pdf.internal.scaleFactor;
+
+    var fontSize = pdf.internal.getFontSize();
+    var txtWidth =
+      (pdf.getStringUnitWidth(text) * fontSize) / pdf.internal.scaleFactor;
+    txtWidth *= Math.round(((k * 96) / 72) * 10000) / 10000;
+
+    var TextMetrics = function(options) {
+      options = options || {};
+      var _width = options.width || 0;
+      Object.defineProperty(this, "width", {
+        get: function() {
+          return _width;
+        }
       });
+      return this;
     };
+    return new TextMetrics({ width: txtWidth });
+  };
 
-    /**
-     * Draws text on the canvas (no fill)
-     *
-     * @name strokeText
-     * @function
-     * @param text {String} Specifies the text that will be written on the canvas
-     * @param x {Number} The x coordinate where to start painting the text (relative to the canvas)
-     * @param y {Number} The y coordinate where to start painting the text (relative to the canvas)
-     * @param maxWidth {Number} Optional. The maximum allowed width of the text, in pixels
-     * @description The strokeText() method draws text (with no fill) on the canvas. The default color of the text is black.
-     */
-    Context2D.prototype.strokeText = function(text, x, y, maxWidth) {
-      if (isNaN(x) || isNaN(y) || typeof text !== "string") {
-        console.error("jsPDF.context2d.strokeText: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.strokeText");
-      }
-      if (isStrokeTransparent.call(this)) {
-        return;
-      }
+  //Transformations
 
-      maxWidth = isNaN(maxWidth) ? undefined : maxWidth;
-      y = getBaseline.call(this, y);
+  /**
+   * Scales the current drawing bigger or smaller
+   *
+   * @name scale
+   * @function
+   * @param scalewidth {Number} Scales the width of the current drawing (1=100%, 0.5=50%, 2=200%, etc.)
+   * @param scaleheight {Number} Scales the height of the current drawing (1=100%, 0.5=50%, 2=200%, etc.)
+   * @description The scale() method scales the current drawing, bigger or smaller.
+   */
+  Context2D.prototype.scale = function(scalewidth, scaleheight) {
+    if (isNaN(scalewidth) || isNaN(scaleheight)) {
+      console.error("jsPDF.context2d.scale: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.scale");
+    }
+    var matrix = new Matrix(scalewidth, 0.0, 0.0, scaleheight, 0.0, 0.0);
+    this.ctx.transform = this.ctx.transform.multiply(matrix);
+  };
 
-      var degs = rad2deg(this.ctx.transform.rotation);
-      var scale = this.ctx.transform.scaleX;
+  /**
+   * Rotates the current drawing
+   *
+   * @name rotate
+   * @function
+   * @param angle {Number} The rotation angle, in radians.
+   * @description To calculate from degrees to radians: degrees*Math.PI/180. <br />
+   * Example: to rotate 5 degrees, specify the following: 5*Math.PI/180
+   */
+  Context2D.prototype.rotate = function(angle) {
+    if (isNaN(angle)) {
+      console.error("jsPDF.context2d.rotate: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.rotate");
+    }
+    var matrix = new Matrix(
+      Math.cos(angle),
+      Math.sin(angle),
+      -Math.sin(angle),
+      Math.cos(angle),
+      0.0,
+      0.0
+    );
+    this.ctx.transform = this.ctx.transform.multiply(matrix);
+  };
 
-      putText.call(this, {
-        text: text,
-        x: x,
-        y: y,
-        scale: scale,
-        renderingMode: "stroke",
-        angle: degs,
-        align: this.textAlign,
-        maxWidth: maxWidth
-      });
-    };
+  /**
+   * Remaps the (0,0) position on the canvas
+   *
+   * @name translate
+   * @function
+   * @param x {Number} The value to add to horizontal (x) coordinates
+   * @param y {Number} The value to add to vertical (y) coordinates
+   * @description The translate() method remaps the (0,0) position on the canvas.
+   */
+  Context2D.prototype.translate = function(x, y) {
+    if (isNaN(x) || isNaN(y)) {
+      console.error("jsPDF.context2d.translate: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.translate");
+    }
+    var matrix = new Matrix(1.0, 0.0, 0.0, 1.0, x, y);
+    this.ctx.transform = this.ctx.transform.multiply(matrix);
+  };
 
-    /**
-     * Returns an object that contains the width of the specified text
-     *
-     * @name measureText
-     * @function
-     * @param text {String} The text to be measured
-     * @description The measureText() method returns an object that contains the width of the specified text, in pixels.
-     * @returns {Number}
-     */
-    Context2D.prototype.measureText = function(text) {
-      if (typeof text !== "string") {
-        console.error(
-          "jsPDF.context2d.measureText: Invalid arguments",
-          arguments
-        );
-        throw new Error(
-          "Invalid arguments passed to jsPDF.context2d.measureText"
-        );
-      }
-      var pdf = this.pdf;
-      var k = this.pdf.internal.scaleFactor;
+  /**
+   * Replaces the current transformation matrix for the drawing
+   *
+   * @name transform
+   * @function
+   * @param a {Number} Horizontal scaling
+   * @param b {Number} Horizontal skewing
+   * @param c {Number} Vertical skewing
+   * @param d {Number} Vertical scaling
+   * @param e {Number} Horizontal moving
+   * @param f {Number} Vertical moving
+   * @description Each object on the canvas has a current transformation matrix.<br /><br />The transform() method replaces the current transformation matrix. It multiplies the current transformation matrix with the matrix described by:<br /><br /><br /><br />a    c    e<br /><br />b    d    f<br /><br />0    0    1<br /><br />In other words, the transform() method lets you scale, rotate, move, and skew the current context.
+   */
+  Context2D.prototype.transform = function(a, b, c, d, e, f) {
+    if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d) || isNaN(e) || isNaN(f)) {
+      console.error("jsPDF.context2d.transform: Invalid arguments", arguments);
+      throw new Error("Invalid arguments passed to jsPDF.context2d.transform");
+    }
+    var matrix = new Matrix(a, b, c, d, e, f);
+    this.ctx.transform = this.ctx.transform.multiply(matrix);
+  };
 
-      var fontSize = pdf.internal.getFontSize();
-      var txtWidth =
-        (pdf.getStringUnitWidth(text) * fontSize) / pdf.internal.scaleFactor;
-      txtWidth *= Math.round(((k * 96) / 72) * 10000) / 10000;
+  /**
+   * Resets the current transform to the identity matrix. Then runs transform()
+   *
+   * @name setTransform
+   * @function
+   * @param a {Number} Horizontal scaling
+   * @param b {Number} Horizontal skewing
+   * @param c {Number} Vertical skewing
+   * @param d {Number} Vertical scaling
+   * @param e {Number} Horizontal moving
+   * @param f {Number} Vertical moving
+   * @description Each object on the canvas has a current transformation matrix. <br /><br />The setTransform() method resets the current transform to the identity matrix, and then runs transform() with the same arguments.<br /><br />In other words, the setTransform() method lets you scale, rotate, move, and skew the current context.
+   */
+  Context2D.prototype.setTransform = function(a, b, c, d, e, f) {
+    a = isNaN(a) ? 1 : a;
+    b = isNaN(b) ? 0 : b;
+    c = isNaN(c) ? 0 : c;
+    d = isNaN(d) ? 1 : d;
+    e = isNaN(e) ? 0 : e;
+    f = isNaN(f) ? 0 : f;
+    this.ctx.transform = new Matrix(a, b, c, d, e, f);
+  };
 
-      var TextMetrics = function(options) {
-        options = options || {};
-        var _width = options.width || 0;
-        Object.defineProperty(this, "width", {
-          get: function() {
-            return _width;
-          }
-        });
-        return this;
-      };
-      return new TextMetrics({ width: txtWidth });
-    };
+  /**
+   * Draws an image, canvas, or video onto the canvas
+   *
+   * @function
+   * @param img {} Specifies the image, canvas, or video element to use
+   * @param sx {Number} Optional. The x coordinate where to start clipping
+   * @param sy {Number} Optional. The y coordinate where to start clipping
+   * @param swidth {Number} Optional. The width of the clipped image
+   * @param sheight {Number} Optional. The height of the clipped image
+   * @param x {Number} The x coordinate where to place the image on the canvas
+   * @param y {Number} The y coordinate where to place the image on the canvas
+   * @param width {Number} Optional. The width of the image to use (stretch or reduce the image)
+   * @param height {Number} Optional. The height of the image to use (stretch or reduce the image)
+   */
+  Context2D.prototype.drawImage = function(
+    img,
+    sx,
+    sy,
+    swidth,
+    sheight,
+    x,
+    y,
+    width,
+    height
+  ) {
+    var imageProperties = this.pdf.getImageProperties(img);
+    var factorX = 1;
+    var factorY = 1;
 
-    //Transformations
+    var clipFactorX = 1;
+    var clipFactorY = 1;
 
-    /**
-     * Scales the current drawing bigger or smaller
-     *
-     * @name scale
-     * @function
-     * @param scalewidth {Number} Scales the width of the current drawing (1=100%, 0.5=50%, 2=200%, etc.)
-     * @param scaleheight {Number} Scales the height of the current drawing (1=100%, 0.5=50%, 2=200%, etc.)
-     * @description The scale() method scales the current drawing, bigger or smaller.
-     */
-    Context2D.prototype.scale = function(scalewidth, scaleheight) {
-      if (isNaN(scalewidth) || isNaN(scaleheight)) {
-        console.error("jsPDF.context2d.scale: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.scale");
-      }
-      var matrix = new Matrix(scalewidth, 0.0, 0.0, scaleheight, 0.0, 0.0);
-      this.ctx.transform = this.ctx.transform.multiply(matrix);
-    };
+    if (typeof swidth !== "undefined" && typeof width !== "undefined") {
+      clipFactorX = width / swidth;
+      clipFactorY = height / sheight;
+      factorX = ((imageProperties.width / swidth) * width) / swidth;
+      factorY = ((imageProperties.height / sheight) * height) / sheight;
+    }
 
-    /**
-     * Rotates the current drawing
-     *
-     * @name rotate
-     * @function
-     * @param angle {Number} The rotation angle, in radians.
-     * @description To calculate from degrees to radians: degrees*Math.PI/180. <br />
-     * Example: to rotate 5 degrees, specify the following: 5*Math.PI/180
-     */
-    Context2D.prototype.rotate = function(angle) {
-      if (isNaN(angle)) {
-        console.error("jsPDF.context2d.rotate: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.rotate");
-      }
-      var matrix = new Matrix(
-        Math.cos(angle),
-        Math.sin(angle),
-        -Math.sin(angle),
-        Math.cos(angle),
-        0.0,
-        0.0
-      );
-      this.ctx.transform = this.ctx.transform.multiply(matrix);
-    };
+    //is sx and sy are set and x and y not, set x and y with values of sx and sy
+    if (typeof x === "undefined") {
+      x = sx;
+      y = sy;
+      sx = 0;
+      sy = 0;
+    }
 
-    /**
-     * Remaps the (0,0) position on the canvas
-     *
-     * @name translate
-     * @function
-     * @param x {Number} The value to add to horizontal (x) coordinates
-     * @param y {Number} The value to add to vertical (y) coordinates
-     * @description The translate() method remaps the (0,0) position on the canvas.
-     */
-    Context2D.prototype.translate = function(x, y) {
-      if (isNaN(x) || isNaN(y)) {
-        console.error("jsPDF.context2d.translate: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.translate");
-      }
-      var matrix = new Matrix(1.0, 0.0, 0.0, 1.0, x, y);
-      this.ctx.transform = this.ctx.transform.multiply(matrix);
-    };
+    if (typeof swidth !== "undefined" && typeof width === "undefined") {
+      width = swidth;
+      height = sheight;
+    }
+    if (typeof swidth === "undefined" && typeof width === "undefined") {
+      width = imageProperties.width;
+      height = imageProperties.height;
+    }
 
-    /**
-     * Replaces the current transformation matrix for the drawing
-     *
-     * @name transform
-     * @function
-     * @param a {Number} Horizontal scaling
-     * @param b {Number} Horizontal skewing
-     * @param c {Number} Vertical skewing
-     * @param d {Number} Vertical scaling
-     * @param e {Number} Horizontal moving
-     * @param f {Number} Vertical moving
-     * @description Each object on the canvas has a current transformation matrix.<br /><br />The transform() method replaces the current transformation matrix. It multiplies the current transformation matrix with the matrix described by:<br /><br /><br /><br />a    c    e<br /><br />b    d    f<br /><br />0    0    1<br /><br />In other words, the transform() method lets you scale, rotate, move, and skew the current context.
-     */
-    Context2D.prototype.transform = function(a, b, c, d, e, f) {
-      if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d) || isNaN(e) || isNaN(f)) {
-        console.error("jsPDF.context2d.transform: Invalid arguments", arguments);
-        throw new Error("Invalid arguments passed to jsPDF.context2d.transform");
-      }
-      var matrix = new Matrix(a, b, c, d, e, f);
-      this.ctx.transform = this.ctx.transform.multiply(matrix);
-    };
+    var decomposedTransformationMatrix = this.ctx.transform.decompose();
+    var angle = rad2deg(decomposedTransformationMatrix.rotate.shx);
+    var matrix = new Matrix();
+    matrix = matrix.multiply(decomposedTransformationMatrix.translate);
+    matrix = matrix.multiply(decomposedTransformationMatrix.skew);
+    matrix = matrix.multiply(decomposedTransformationMatrix.scale);
+    var xRect = matrix.applyToRectangle(
+      new Rectangle(
+        x - sx * clipFactorX,
+        y - sy * clipFactorY,
+        swidth * factorX,
+        sheight * factorY
+      )
+    );
 
-    /**
-     * Resets the current transform to the identity matrix. Then runs transform()
-     *
-     * @name setTransform
-     * @function
-     * @param a {Number} Horizontal scaling
-     * @param b {Number} Horizontal skewing
-     * @param c {Number} Vertical skewing
-     * @param d {Number} Vertical scaling
-     * @param e {Number} Horizontal moving
-     * @param f {Number} Vertical moving
-     * @description Each object on the canvas has a current transformation matrix. <br /><br />The setTransform() method resets the current transform to the identity matrix, and then runs transform() with the same arguments.<br /><br />In other words, the setTransform() method lets you scale, rotate, move, and skew the current context.
-     */
-    Context2D.prototype.setTransform = function(a, b, c, d, e, f) {
-      a = isNaN(a) ? 1 : a;
-      b = isNaN(b) ? 0 : b;
-      c = isNaN(c) ? 0 : c;
-      d = isNaN(d) ? 1 : d;
-      e = isNaN(e) ? 0 : e;
-      f = isNaN(f) ? 0 : f;
-      this.ctx.transform = new Matrix(a, b, c, d, e, f);
-    };
+    var clipPath;
+    if (this.autoPaging) {
+      var pages = getPagesByPath.call(this, xRect);
 
-    /**
-     * Draws an image, canvas, or video onto the canvas
-     *
-     * @function
-     * @param img {} Specifies the image, canvas, or video element to use
-     * @param sx {Number} Optional. The x coordinate where to start clipping
-     * @param sy {Number} Optional. The y coordinate where to start clipping
-     * @param swidth {Number} Optional. The width of the clipped image
-     * @param sheight {Number} Optional. The height of the clipped image
-     * @param x {Number} The x coordinate where to place the image on the canvas
-     * @param y {Number} The y coordinate where to place the image on the canvas
-     * @param width {Number} Optional. The width of the image to use (stretch or reduce the image)
-     * @param height {Number} Optional. The height of the image to use (stretch or reduce the image)
-     */
-    Context2D.prototype.drawImage = function(
-      img,
-      sx,
-      sy,
-      swidth,
-      sheight,
-      x,
-      y,
-      width,
-      height
-    ) {
-      var imageProperties = this.pdf.getImageProperties(img);
-      var factorX = 1;
-      var factorY = 1;
+      for (var i = pages.min; i < pages.max + 1; i++) {
+        this.pdf.setPage(i);
 
-      var clipFactorX = 1;
-      var clipFactorY = 1;
+        var pageY = calculatePageY(this, i);
 
-      if (typeof swidth !== "undefined" && typeof width !== "undefined") {
-        clipFactorX = width / swidth;
-        clipFactorY = height / sheight;
-        factorX = ((imageProperties.width / swidth) * width) / swidth;
-        factorY = ((imageProperties.height / sheight) * height) / sheight;
-      }
-
-      //is sx and sy are set and x and y not, set x and y with values of sx and sy
-      if (typeof x === "undefined") {
-        x = sx;
-        y = sy;
-        sx = 0;
-        sy = 0;
-      }
-
-      if (typeof swidth !== "undefined" && typeof width === "undefined") {
-        width = swidth;
-        height = sheight;
-      }
-      if (typeof swidth === "undefined" && typeof width === "undefined") {
-        width = imageProperties.width;
-        height = imageProperties.height;
-      }
-
-      var decomposedTransformationMatrix = this.ctx.transform.decompose();
-      var angle = rad2deg(decomposedTransformationMatrix.rotate.shx);
-      var matrix = new Matrix();
-      matrix = matrix.multiply(decomposedTransformationMatrix.translate);
-      matrix = matrix.multiply(decomposedTransformationMatrix.skew);
-      matrix = matrix.multiply(decomposedTransformationMatrix.scale);
-      var xRect = matrix.applyToRectangle(
-        new Rectangle(
-          x - sx * clipFactorX,
-          y - sy * clipFactorY,
-          swidth * factorX,
-          sheight * factorY
-        )
-      );
-      var pageArray = getPagesByPath.call(this, xRect);
-      var pages = [];
-      for (var ii = 0; ii < pageArray.length; ii += 1) {
-        if (pages.indexOf(pageArray[ii]) === -1) {
-          pages.push(pageArray[ii]);
+        if (this.ctx.clip_path.length !== 0) {
+          var tmpPaths = this.path;
+          clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
+          this.path = pathPositionRedo(clipPath, this.posX, pageY);
+          drawPaths.call(this, "fill", true);
+          this.path = tmpPaths;
         }
-      }
-
-      sortPages(pages);
-
-      var clipPath;
-      if (this.autoPaging) {
-        var min = pages[0];
-        var max = pages[pages.length - 1];
-        for (var i = min; i < max + 1; i++) {
-          this.pdf.setPage(i);
-
-          if (this.ctx.clip_path.length !== 0) {
-            var tmpPaths = this.path;
-            clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-            this.path = pathPositionRedo(
-              clipPath,
-              this.posX,
-              -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-            );
-            drawPaths.call(this, "fill", true);
-            this.path = tmpPaths;
-          }
-          var tmpRect = JSON.parse(JSON.stringify(xRect));
-          tmpRect = pathPositionRedo(
-            [tmpRect],
-            this.posX,
-            -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-          )[0];
-          this.pdf.addImage(
-            img,
-            "JPEG",
-            tmpRect.x,
-            tmpRect.y,
-            tmpRect.w,
-            tmpRect.h,
-            null,
-            null,
-            angle
-          );
-        }
-      } else {
+        var tmpRect = JSON.parse(JSON.stringify(xRect));
+        tmpRect = pathPositionRedo([tmpRect], this.posX, pageY)[0];
         this.pdf.addImage(
           img,
           "JPEG",
-          xRect.x,
-          xRect.y,
-          xRect.w,
-          xRect.h,
+          tmpRect.x,
+          tmpRect.y,
+          tmpRect.w,
+          tmpRect.h,
           null,
           null,
           angle
         );
       }
-    };
+    } else {
+      this.pdf.addImage(
+        img,
+        "JPEG",
+        xRect.x,
+        xRect.y,
+        xRect.w,
+        xRect.h,
+        null,
+        null,
+        angle
+      );
+    }
+  };
 
-    var getPagesByPath = function(path, pageWrapX, pageWrapY) {
-      var result = [];
-      pageWrapX = pageWrapX || this.pdf.internal.pageSize.width;
-      pageWrapY = pageWrapY || this.pdf.internal.pageSize.height;
+  function calculatePageY(context, pageNumber) {
+    var relativePageNumber = pageNumber - context.startPage;
+    var pageHeight = context.pdf.internal.pageSize.height;
 
-      switch (path.type) {
+    return -1 * pageHeight * relativePageNumber + context.posY;
+  }
+
+  /**
+   * Given a list of paths, this function returns the range of pages that the paths will be draw on. If
+   * a page in the range does not yet exist it will be added to the document.
+   *
+   * @param {*} paths
+   * @param {*} pageWrapX
+   * @param {*} pageWrapY
+   */
+  var getPagesByPath = function(paths, pageWrapX, pageWrapY) {
+    var i;
+
+    var startPage = this.startPage;
+    var offsetY = this.posY;
+
+    var min = Number.POSITIVE_INFINITY;
+    var max = Number.NEGATIVE_INFINITY;
+
+    paths = Array.isArray(paths) ? paths : [paths];
+
+    pageWrapX = pageWrapX || this.pdf.internal.pageSize.width;
+    pageWrapY = pageWrapY || this.pdf.internal.pageSize.height;
+
+    function calcMinAndMaxPage(y) {
+      var pageNumber =
+        startPage + Math.max(0, Math.floor((offsetY + y) / pageWrapY));
+
+      min = Math.min(min, pageNumber);
+      max = Math.max(max, pageNumber);
+    }
+
+    for (i = 0; i < paths.length; ++i) {
+      var path = paths[i];
+
+      switch (paths.type) {
         default:
         case "mt":
         case "lt":
-          result.push(Math.floor((path.y + this.posY) / pageWrapY) + 1);
+          calcMinAndMaxPage(path.y);
           break;
         case "arc":
-          result.push(
-            Math.floor((path.y + this.posY - path.radius) / pageWrapY) + 1
-          );
-          result.push(
-            Math.floor((path.y + this.posY + path.radius) / pageWrapY) + 1
-          );
+          calcMinAndMaxPage(path.y - path.radius);
+          calcMinAndMaxPage(path.y + path.radius);
           break;
         case "qct":
           var rectOfQuadraticCurve = getQuadraticCurveBoundary(
@@ -14594,12 +13827,8 @@
             path.x,
             path.y
           );
-          result.push(Math.floor(rectOfQuadraticCurve.y / pageWrapY) + 1);
-          result.push(
-            Math.floor(
-              (rectOfQuadraticCurve.y + rectOfQuadraticCurve.h) / pageWrapY
-            ) + 1
-          );
+          calcMinAndMaxPage(rectOfQuadraticCurve.y);
+          calcMinAndMaxPage(rectOfQuadraticCurve.y + rectOfQuadraticCurve.h);
           break;
         case "bct":
           var rectOfBezierCurve = getBezierCurveBoundary(
@@ -14612,514 +13841,452 @@
             path.x,
             path.y
           );
-          result.push(Math.floor(rectOfBezierCurve.y / pageWrapY) + 1);
-          result.push(
-            Math.floor((rectOfBezierCurve.y + rectOfBezierCurve.h) / pageWrapY) +
-              1
-          );
+          calcMinAndMaxPage(rectOfBezierCurve.y);
+          calcMinAndMaxPage(rectOfBezierCurve.y + rectOfBezierCurve.h);
           break;
         case "rect":
-          result.push(Math.floor((path.y + this.posY) / pageWrapY) + 1);
-          result.push(Math.floor((path.y + path.h + this.posY) / pageWrapY) + 1);
+          calcMinAndMaxPage(path.y);
+          calcMinAndMaxPage(path.y + path.h);
       }
+    }
 
-      for (var i = 0; i < result.length; i += 1) {
-        while (this.pdf.internal.getNumberOfPages() < result[i]) {
-          addPage.call(this);
-        }
-      }
-      return result;
+    var numberOfPages = this.pdf.internal.getNumberOfPages();
+
+    for (i = numberOfPages; i < max; i += 1) {
+      addPage.call(this);
+    }
+
+    return {
+      min: min,
+      max: max
     };
+  };
 
-    var addPage = function() {
-      var fillStyle = this.fillStyle;
-      var strokeStyle = this.strokeStyle;
-      var font = this.font;
-      var lineCap = this.lineCap;
-      var lineWidth = this.lineWidth;
-      var lineJoin = this.lineJoin;
-      this.pdf.addPage();
-      this.fillStyle = fillStyle;
-      this.strokeStyle = strokeStyle;
-      this.font = font;
-      this.lineCap = lineCap;
-      this.lineWidth = lineWidth;
-      this.lineJoin = lineJoin;
-    };
+  var addPage = function() {
+    var fillStyle = this.fillStyle;
+    var strokeStyle = this.strokeStyle;
+    var font = this.font;
+    var lineCap = this.lineCap;
+    var lineWidth = this.lineWidth;
+    var lineJoin = this.lineJoin;
+    this.pdf.addPage();
+    this.fillStyle = fillStyle;
+    this.strokeStyle = strokeStyle;
+    this.font = font;
+    this.lineCap = lineCap;
+    this.lineWidth = lineWidth;
+    this.lineJoin = lineJoin;
+  };
 
-    var pathPositionRedo = function(paths, x, y) {
-      for (var i = 0; i < paths.length; i++) {
-        switch (paths[i].type) {
-          case "bct":
-            paths[i].x2 += x;
-            paths[i].y2 += y;
-          case "qct":
-            paths[i].x1 += x;
-            paths[i].y1 += y;
-          case "mt":
-          case "lt":
-          case "arc":
-          default:
-            paths[i].x += x;
-            paths[i].y += y;
-        }
+  var pathPositionRedo = function(paths, x, y) {
+    for (var i = 0; i < paths.length; i++) {
+      switch (paths[i].type) {
+        case "bct":
+          paths[i].x2 += x;
+          paths[i].y2 += y;
+        case "qct":
+          paths[i].x1 += x;
+          paths[i].y1 += y;
+        case "mt":
+        case "lt":
+        case "arc":
+        default:
+          paths[i].x += x;
+          paths[i].y += y;
       }
-      return paths;
-    };
+    }
+    return paths;
+  };
 
-    var sortPages = function(pages) {
-      return pages.sort(function(a, b) {
-        return a - b;
-      });
-    };
+  var pathPreProcess = function(rule, isClip) {
+    var fillStyle = this.fillStyle;
+    var strokeStyle = this.strokeStyle;
+    var lineCap = this.lineCap;
+    var oldLineWidth = this.lineWidth;
+    var lineWidth = oldLineWidth * this.ctx.transform.scaleX;
+    var lineJoin = this.lineJoin;
 
-    var pathPreProcess = function(rule, isClip) {
-      var fillStyle = this.fillStyle;
-      var strokeStyle = this.strokeStyle;
-      var lineCap = this.lineCap;
-      var oldLineWidth = this.lineWidth;
-      var lineWidth = oldLineWidth * this.ctx.transform.scaleX;
-      var lineJoin = this.lineJoin;
+    var origPath = JSON.parse(JSON.stringify(this.path));
+    var xPath = JSON.parse(JSON.stringify(this.path));
+    var clipPath;
+    var tmpPath;
 
-      var origPath = JSON.parse(JSON.stringify(this.path));
-      var xPath = JSON.parse(JSON.stringify(this.path));
-      var clipPath;
-      var tmpPath;
-      var pages = [];
+    if (this.autoPaging) {
+      var pages = getPagesByPath.call(
+        this,
+        xPath.filter(p => typeof p.x !== "undefined")
+      );
 
-      for (var i = 0; i < xPath.length; i++) {
-        if (typeof xPath[i].x !== "undefined") {
-          var page = getPagesByPath.call(this, xPath[i]);
+      for (var k = pages.min; k < pages.max + 1; k++) {
+        this.pdf.setPage(k);
 
-          for (var ii = 0; ii < page.length; ii += 1) {
-            if (pages.indexOf(page[ii]) === -1) {
-              pages.push(page[ii]);
-            }
-          }
-        }
-      }
-
-      for (var j = 0; j < pages.length; j++) {
-        while (this.pdf.internal.getNumberOfPages() < pages[j]) {
-          addPage.call(this);
-        }
-      }
-      sortPages(pages);
-
-      if (this.autoPaging) {
-        var min = pages[0];
-        var max = pages[pages.length - 1];
-        for (var k = min; k < max + 1; k++) {
-          this.pdf.setPage(k);
-
-          this.fillStyle = fillStyle;
-          this.strokeStyle = strokeStyle;
-          this.lineCap = lineCap;
-          this.lineWidth = lineWidth;
-          this.lineJoin = lineJoin;
-
-          if (this.ctx.clip_path.length !== 0) {
-            var tmpPaths = this.path;
-            clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-            this.path = pathPositionRedo(
-              clipPath,
-              this.posX,
-              -1 * this.pdf.internal.pageSize.height * (k - 1) + this.posY
-            );
-            drawPaths.call(this, rule, true);
-            this.path = tmpPaths;
-          }
-          tmpPath = JSON.parse(JSON.stringify(origPath));
-          this.path = pathPositionRedo(
-            tmpPath,
-            this.posX,
-            -1 * this.pdf.internal.pageSize.height * (k - 1) + this.posY
-          );
-          if (isClip === false || k === 0) {
-            drawPaths.call(this, rule, isClip);
-          }
-          this.lineWidth = oldLineWidth;
-        }
-      } else {
+        this.fillStyle = fillStyle;
+        this.strokeStyle = strokeStyle;
+        this.lineCap = lineCap;
         this.lineWidth = lineWidth;
-        drawPaths.call(this, rule, isClip);
+        this.lineJoin = lineJoin;
+
+        var pageY = calculatePageY(this, k);
+
+        if (this.ctx.clip_path.length !== 0) {
+          var tmpPaths = this.path;
+          clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
+          this.path = pathPositionRedo(clipPath, this.posX, pageY);
+          drawPaths.call(this, rule, true);
+          this.path = tmpPaths;
+        }
+        tmpPath = JSON.parse(JSON.stringify(origPath));
+        this.path = pathPositionRedo(tmpPath, this.posX, pageY);
+        if (isClip === false || k === 0) {
+          drawPaths.call(this, rule, isClip);
+        }
         this.lineWidth = oldLineWidth;
       }
-      this.path = origPath;
-    };
+    } else {
+      this.lineWidth = lineWidth;
+      drawPaths.call(this, rule, isClip);
+      this.lineWidth = oldLineWidth;
+    }
+    this.path = origPath;
+  };
 
-    /**
-     * Processes the paths
-     *
-     * @function
-     * @param rule {String}
-     * @param isClip {Boolean}
-     * @private
-     * @ignore
-     */
-    var drawPaths = function(rule, isClip) {
-      if (rule === "stroke" && !isClip && isStrokeTransparent.call(this)) {
-        return;
-      }
+  /**
+   * Processes the paths
+   *
+   * @function
+   * @param rule {String}
+   * @param isClip {Boolean}
+   * @private
+   * @ignore
+   */
+  var drawPaths = function(rule, isClip) {
+    if (rule === "stroke" && !isClip && isStrokeTransparent.call(this)) {
+      return;
+    }
 
-      if (rule !== "stroke" && !isClip && isFillTransparent.call(this)) {
-        return;
-      }
+    if (rule !== "stroke" && !isClip && isFillTransparent.call(this)) {
+      return;
+    }
 
-      var moves = [];
+    var moves = [];
 
-      //var alpha = (this.ctx.fillOpacity < 1) ? this.ctx.fillOpacity : this.ctx.globalAlpha;
-      var delta;
-      var xPath = this.path;
-      for (var i = 0; i < xPath.length; i++) {
-        var pt = xPath[i];
+    //var alpha = (this.ctx.fillOpacity < 1) ? this.ctx.fillOpacity : this.ctx.globalAlpha;
+    var delta;
+    var xPath = this.path;
+    for (var i = 0; i < xPath.length; i++) {
+      var pt = xPath[i];
 
-        switch (pt.type) {
-          case "begin":
-            moves.push({
-              begin: true
-            });
-            break;
+      switch (pt.type) {
+        case "begin":
+          moves.push({
+            begin: true
+          });
+          break;
 
-          case "close":
-            moves.push({
-              close: true
-            });
-            break;
+        case "close":
+          moves.push({
+            close: true
+          });
+          break;
 
-          case "mt":
-            moves.push({
-              start: pt,
-              deltas: [],
-              abs: []
-            });
-            break;
+        case "mt":
+          moves.push({
+            start: pt,
+            deltas: [],
+            abs: []
+          });
+          break;
 
-          case "lt":
-            var iii = moves.length;
-            if (!isNaN(xPath[i - 1].x)) {
-              delta = [pt.x - xPath[i - 1].x, pt.y - xPath[i - 1].y];
-              if (iii > 0) {
-                for (iii; iii >= 0; iii--) {
-                  if (
-                    moves[iii - 1].close !== true &&
-                    moves[iii - 1].begin !== true
-                  ) {
-                    moves[iii - 1].deltas.push(delta);
-                    moves[iii - 1].abs.push(pt);
-                    break;
-                  }
+        case "lt":
+          var iii = moves.length;
+          if (!isNaN(xPath[i - 1].x)) {
+            delta = [pt.x - xPath[i - 1].x, pt.y - xPath[i - 1].y];
+            if (iii > 0) {
+              for (iii; iii >= 0; iii--) {
+                if (
+                  moves[iii - 1].close !== true &&
+                  moves[iii - 1].begin !== true
+                ) {
+                  moves[iii - 1].deltas.push(delta);
+                  moves[iii - 1].abs.push(pt);
+                  break;
                 }
               }
             }
-            break;
-
-          case "bct":
-            delta = [
-              pt.x1 - xPath[i - 1].x,
-              pt.y1 - xPath[i - 1].y,
-              pt.x2 - xPath[i - 1].x,
-              pt.y2 - xPath[i - 1].y,
-              pt.x - xPath[i - 1].x,
-              pt.y - xPath[i - 1].y
-            ];
-            moves[moves.length - 1].deltas.push(delta);
-            break;
-
-          case "qct":
-            var x1 = xPath[i - 1].x + (2.0 / 3.0) * (pt.x1 - xPath[i - 1].x);
-            var y1 = xPath[i - 1].y + (2.0 / 3.0) * (pt.y1 - xPath[i - 1].y);
-            var x2 = pt.x + (2.0 / 3.0) * (pt.x1 - pt.x);
-            var y2 = pt.y + (2.0 / 3.0) * (pt.y1 - pt.y);
-            var x3 = pt.x;
-            var y3 = pt.y;
-            delta = [
-              x1 - xPath[i - 1].x,
-              y1 - xPath[i - 1].y,
-              x2 - xPath[i - 1].x,
-              y2 - xPath[i - 1].y,
-              x3 - xPath[i - 1].x,
-              y3 - xPath[i - 1].y
-            ];
-            moves[moves.length - 1].deltas.push(delta);
-            break;
-
-          case "arc":
-            moves.push({
-              deltas: [],
-              abs: [],
-              arc: true
-            });
-
-            if (Array.isArray(moves[moves.length - 1].abs)) {
-              moves[moves.length - 1].abs.push(pt);
-            }
-            break;
-        }
-      }
-      var style;
-      if (!isClip) {
-        if (rule === "stroke") {
-          style = "stroke";
-        } else {
-          style = "fill";
-        }
-      } else {
-        style = null;
-      }
-
-      for (var k = 0; k < moves.length; k++) {
-        if (moves[k].arc) {
-          var arcs = moves[k].abs;
-
-          for (var ii = 0; ii < arcs.length; ii++) {
-            var arc = arcs[ii];
-
-            if (arc.type === "arc") {
-              drawArc.call(
-                this,
-                arc.x,
-                arc.y,
-                arc.radius,
-                arc.startAngle,
-                arc.endAngle,
-                arc.counterclockwise,
-                undefined,
-                isClip
-              );
-            } else {
-              drawLine.call(this, arc.x, arc.y);
-            }
           }
-          putStyle.call(this, style);
-          this.pdf.internal.out("h");
-        }
-        if (!moves[k].arc) {
-          if (moves[k].close !== true && moves[k].begin !== true) {
-            var x = moves[k].start.x;
-            var y = moves[k].start.y;
-            drawLines.call(this, moves[k].deltas, x, y);
-          }
-        }
-      }
-
-      if (style) {
-        putStyle.call(this, style);
-      }
-      if (isClip) {
-        doClip.call(this);
-      }
-    };
-
-    var getBaseline = function(y) {
-      var height =
-        this.pdf.internal.getFontSize() / this.pdf.internal.scaleFactor;
-      var descent = height * (this.pdf.internal.getLineHeightFactor() - 1);
-      switch (this.ctx.textBaseline) {
-        case "bottom":
-          return y - descent;
-        case "top":
-          return y + height - descent;
-        case "hanging":
-          return y + height - 2 * descent;
-        case "middle":
-          return y + height / 2 - descent;
-        case "ideographic":
-          // TODO not implemented
-          return y;
-        case "alphabetic":
-        default:
-          return y;
-      }
-    };
-
-    Context2D.prototype.createLinearGradient = function createLinearGradient() {
-      var canvasGradient = function canvasGradient() {};
-
-      canvasGradient.colorStops = [];
-      canvasGradient.addColorStop = function(offset, color) {
-        this.colorStops.push([offset, color]);
-      };
-
-      canvasGradient.getColor = function() {
-        if (this.colorStops.length === 0) {
-          return "#000000";
-        }
-
-        return this.colorStops[0][1];
-      };
-
-      canvasGradient.isCanvasGradient = true;
-      return canvasGradient;
-    };
-    Context2D.prototype.createPattern = function createPattern() {
-      return this.createLinearGradient();
-    };
-    Context2D.prototype.createRadialGradient = function createRadialGradient() {
-      return this.createLinearGradient();
-    };
-
-    /**
-     *
-     * @param x Edge point X
-     * @param y Edge point Y
-     * @param r Radius
-     * @param a1 start angle
-     * @param a2 end angle
-     * @param counterclockwise
-     * @param style
-     * @param isClip
-     */
-    var drawArc = function(x, y, r, a1, a2, counterclockwise, style, isClip) {
-      var curves = createArc.call(this, r, a1, a2, counterclockwise);
-
-      for (var i = 0; i < curves.length; i++) {
-        var curve = curves[i];
-        if ( i === 0) {
-          doMove.call(this, curve.x1 + x, curve.y1 + y);
-        }
-        drawCurve.call(
-          this,
-          x,
-          y,
-          curve.x2,
-          curve.y2,
-          curve.x3,
-          curve.y3,
-          curve.x4,
-          curve.y4
-        );
-      }
-
-      if (!isClip) {
-        putStyle.call(this, style);
-      } else {
-        doClip.call(this);
-      }
-    };
-
-    var putStyle = function(style) {
-      switch (style) {
-        case "stroke":
-          this.pdf.internal.out("S");
           break;
-        case "fill":
-          this.pdf.internal.out("f");
+
+        case "bct":
+          delta = [
+            pt.x1 - xPath[i - 1].x,
+            pt.y1 - xPath[i - 1].y,
+            pt.x2 - xPath[i - 1].x,
+            pt.y2 - xPath[i - 1].y,
+            pt.x - xPath[i - 1].x,
+            pt.y - xPath[i - 1].y
+          ];
+          moves[moves.length - 1].deltas.push(delta);
           break;
-      }
-    };
 
-    var doClip = function() {
-      this.pdf.clip();
-      this.pdf.discardPath();
-    };
-
-    var doMove = function(x, y) {
-      this.pdf.internal.out(
-        getHorizontalCoordinateString(x) +
-          " " +
-          getVerticalCoordinateString(y) +
-          " m"
-      );
-    };
-
-    var putText = function(options) {
-      var textAlign;
-      switch (options.align) {
-        case "right":
-        case "end":
-          textAlign = "right";
+        case "qct":
+          var x1 = xPath[i - 1].x + (2.0 / 3.0) * (pt.x1 - xPath[i - 1].x);
+          var y1 = xPath[i - 1].y + (2.0 / 3.0) * (pt.y1 - xPath[i - 1].y);
+          var x2 = pt.x + (2.0 / 3.0) * (pt.x1 - pt.x);
+          var y2 = pt.y + (2.0 / 3.0) * (pt.y1 - pt.y);
+          var x3 = pt.x;
+          var y3 = pt.y;
+          delta = [
+            x1 - xPath[i - 1].x,
+            y1 - xPath[i - 1].y,
+            x2 - xPath[i - 1].x,
+            y2 - xPath[i - 1].y,
+            x3 - xPath[i - 1].x,
+            y3 - xPath[i - 1].y
+          ];
+          moves[moves.length - 1].deltas.push(delta);
           break;
-        case "center":
-          textAlign = "center";
-          break;
-        case "left":
-        case "start":
-        default:
-          textAlign = "left";
-          break;
-      }
 
-      var pt = this.ctx.transform.applyToPoint(new Point(options.x, options.y));
-      var decomposedTransformationMatrix = this.ctx.transform.decompose();
-      var matrix = new Matrix();
-      matrix = matrix.multiply(decomposedTransformationMatrix.translate);
-      matrix = matrix.multiply(decomposedTransformationMatrix.skew);
-      matrix = matrix.multiply(decomposedTransformationMatrix.scale);
-
-      var textDimensions = this.pdf.getTextDimensions(options.text);
-      var textRect = this.ctx.transform.applyToRectangle(
-        new Rectangle(options.x, options.y, textDimensions.w, textDimensions.h)
-      );
-      var textXRect = matrix.applyToRectangle(
-        new Rectangle(
-          options.x,
-          options.y - textDimensions.h,
-          textDimensions.w,
-          textDimensions.h
-        )
-      );
-      var pageArray = getPagesByPath.call(this, textXRect);
-      var pages = [];
-      for (var ii = 0; ii < pageArray.length; ii += 1) {
-        if (pages.indexOf(pageArray[ii]) === -1) {
-          pages.push(pageArray[ii]);
-        }
-      }
-
-      sortPages(pages);
-
-      var clipPath, oldSize, oldLineWidth;
-      if (this.autoPaging === true) {
-        var min = pages[0];
-        var max = pages[pages.length - 1];
-        for (var i = min; i < max + 1; i++) {
-          this.pdf.setPage(i);
-
-          if (this.ctx.clip_path.length !== 0) {
-            var tmpPaths = this.path;
-            clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
-            this.path = pathPositionRedo(
-              clipPath,
-              this.posX,
-              -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-            );
-            drawPaths.call(this, "fill", true);
-            this.path = tmpPaths;
-          }
-          var tmpRect = JSON.parse(JSON.stringify(textRect));
-          tmpRect = pathPositionRedo(
-            [tmpRect],
-            this.posX,
-            -1 * this.pdf.internal.pageSize.height * (i - 1) + this.posY
-          )[0];
-
-          if (options.scale >= 0.01) {
-            oldSize = this.pdf.internal.getFontSize();
-            this.pdf.setFontSize(oldSize * options.scale);
-            oldLineWidth = this.lineWidth;
-            this.lineWidth = oldLineWidth * options.scale;
-          }
-          this.pdf.text(options.text, tmpRect.x, tmpRect.y, {
-            angle: options.angle,
-            align: textAlign,
-            renderingMode: options.renderingMode,
-            maxWidth: options.maxWidth
+        case "arc":
+          moves.push({
+            deltas: [],
+            abs: [],
+            arc: true
           });
 
-          if (options.scale >= 0.01) {
-            this.pdf.setFontSize(oldSize);
-            this.lineWidth = oldLineWidth;
+          if (Array.isArray(moves[moves.length - 1].abs)) {
+            moves[moves.length - 1].abs.push(pt);
+          }
+          break;
+      }
+    }
+    var style;
+    if (!isClip) {
+      if (rule === "stroke") {
+        style = "stroke";
+      } else {
+        style = "fill";
+      }
+    } else {
+      style = null;
+    }
+
+    for (var k = 0; k < moves.length; k++) {
+      if (moves[k].arc) {
+        var arcs = moves[k].abs;
+
+        for (var ii = 0; ii < arcs.length; ii++) {
+          var arc = arcs[ii];
+
+          if (arc.type === "arc") {
+            drawArc.call(
+              this,
+              arc.x,
+              arc.y,
+              arc.radius,
+              arc.startAngle,
+              arc.endAngle,
+              arc.counterclockwise,
+              undefined,
+              isClip
+            );
+          } else {
+            drawLine.call(this, arc.x, arc.y);
           }
         }
-      } else {
+        putStyle.call(this, style);
+        this.pdf.internal.out("h");
+      }
+      if (!moves[k].arc) {
+        if (moves[k].close !== true && moves[k].begin !== true) {
+          var x = moves[k].start.x;
+          var y = moves[k].start.y;
+          drawLines.call(this, moves[k].deltas, x, y);
+        }
+      }
+    }
+
+    if (style) {
+      putStyle.call(this, style);
+    }
+    if (isClip) {
+      doClip.call(this);
+    }
+  };
+
+  var getBaseline = function(y) {
+    var height = this.pdf.internal.getFontSize() / this.pdf.internal.scaleFactor;
+    var descent = height * (this.pdf.internal.getLineHeightFactor() - 1);
+    switch (this.ctx.textBaseline) {
+      case "bottom":
+        return y - descent;
+      case "top":
+        return y + height - descent;
+      case "hanging":
+        return y + height - 2 * descent;
+      case "middle":
+        return y + height / 2 - descent;
+      case "ideographic":
+        // TODO not implemented
+        return y;
+      case "alphabetic":
+      default:
+        return y;
+    }
+  };
+
+  Context2D.prototype.createLinearGradient = function createLinearGradient() {
+    var canvasGradient = function canvasGradient() {};
+
+    canvasGradient.colorStops = [];
+    canvasGradient.addColorStop = function(offset, color) {
+      this.colorStops.push([offset, color]);
+    };
+
+    canvasGradient.getColor = function() {
+      if (this.colorStops.length === 0) {
+        return "#000000";
+      }
+
+      return this.colorStops[0][1];
+    };
+
+    canvasGradient.isCanvasGradient = true;
+    return canvasGradient;
+  };
+  Context2D.prototype.createPattern = function createPattern() {
+    return this.createLinearGradient();
+  };
+  Context2D.prototype.createRadialGradient = function createRadialGradient() {
+    return this.createLinearGradient();
+  };
+
+  /**
+   *
+   * @param x Edge point X
+   * @param y Edge point Y
+   * @param r Radius
+   * @param a1 start angle
+   * @param a2 end angle
+   * @param counterclockwise
+   * @param style
+   * @param isClip
+   */
+  var drawArc = function(x, y, r, a1, a2, counterclockwise, style, isClip) {
+    var curves = createArc.call(this, r, a1, a2, counterclockwise);
+
+    for (var i = 0; i < curves.length; i++) {
+      var curve = curves[i];
+      if ( i === 0) {
+        doMove.call(this, curve.x1 + x, curve.y1 + y);
+      }
+      drawCurve.call(
+        this,
+        x,
+        y,
+        curve.x2,
+        curve.y2,
+        curve.x3,
+        curve.y3,
+        curve.x4,
+        curve.y4
+      );
+    }
+
+    if (!isClip) {
+      putStyle.call(this, style);
+    } else {
+      doClip.call(this);
+    }
+  };
+
+  var putStyle = function(style) {
+    switch (style) {
+      case "stroke":
+        this.pdf.internal.out("S");
+        break;
+      case "fill":
+        this.pdf.internal.out("f");
+        break;
+    }
+  };
+
+  var doClip = function() {
+    this.pdf.clip();
+    this.pdf.discardPath();
+  };
+
+  var doMove = function(x, y) {
+    this.pdf.internal.out(
+      getHorizontalCoordinateString(x) +
+        " " +
+        getVerticalCoordinateString(y) +
+        " m"
+    );
+  };
+
+  var putText = function(options) {
+    var textAlign;
+    switch (options.align) {
+      case "right":
+      case "end":
+        textAlign = "right";
+        break;
+      case "center":
+        textAlign = "center";
+        break;
+      case "left":
+      case "start":
+      default:
+        textAlign = "left";
+        break;
+    }
+
+    var pt = this.ctx.transform.applyToPoint(new Point(options.x, options.y));
+    var decomposedTransformationMatrix = this.ctx.transform.decompose();
+    var matrix = new Matrix();
+    matrix = matrix.multiply(decomposedTransformationMatrix.translate);
+    matrix = matrix.multiply(decomposedTransformationMatrix.skew);
+    matrix = matrix.multiply(decomposedTransformationMatrix.scale);
+
+    var textDimensions = this.pdf.getTextDimensions(options.text);
+    var textRect = this.ctx.transform.applyToRectangle(
+      new Rectangle(options.x, options.y, textDimensions.w, textDimensions.h)
+    );
+    var textXRect = matrix.applyToRectangle(
+      new Rectangle(
+        options.x,
+        options.y - textDimensions.h,
+        textDimensions.w,
+        textDimensions.h
+      )
+    );
+
+    var clipPath, oldSize, oldLineWidth;
+    if (this.autoPaging === true) {
+      var pages = getPagesByPath.call(this, textXRect);
+
+      for (var i = pages.min; i < pages.max + 1; i++) {
+        this.pdf.setPage(i);
+
+        var pageY = calculatePageY(this, i);
+
+        if (this.ctx.clip_path.length !== 0) {
+          var tmpPaths = this.path;
+          clipPath = JSON.parse(JSON.stringify(this.ctx.clip_path));
+          this.path = pathPositionRedo(clipPath, this.posX, pageY);
+          drawPaths.call(this, "fill", true);
+          this.path = tmpPaths;
+        }
+        var tmpRect = JSON.parse(JSON.stringify(textRect));
+        tmpRect = pathPositionRedo([tmpRect], this.posX, pageY)[0];
+
         if (options.scale >= 0.01) {
           oldSize = this.pdf.internal.getFontSize();
           this.pdf.setFontSize(oldSize * options.scale);
           oldLineWidth = this.lineWidth;
           this.lineWidth = oldLineWidth * options.scale;
         }
-        this.pdf.text(options.text, pt.x + this.posX, pt.y + this.posY, {
+        this.pdf.text(options.text, tmpRect.x, tmpRect.y, {
           angle: options.angle,
           align: textAlign,
           renderingMode: options.renderingMode,
@@ -15131,211 +14298,1025 @@
           this.lineWidth = oldLineWidth;
         }
       }
+    } else {
+      if (options.scale >= 0.01) {
+        oldSize = this.pdf.internal.getFontSize();
+        this.pdf.setFontSize(oldSize * options.scale);
+        oldLineWidth = this.lineWidth;
+        this.lineWidth = oldLineWidth * options.scale;
+      }
+      this.pdf.text(options.text, pt.x + this.posX, pt.y + this.posY, {
+        angle: options.angle,
+        align: textAlign,
+        renderingMode: options.renderingMode,
+        maxWidth: options.maxWidth
+      });
+
+      if (options.scale >= 0.01) {
+        this.pdf.setFontSize(oldSize);
+        this.lineWidth = oldLineWidth;
+      }
+    }
+  };
+
+  var drawLine = function(x, y, prevX, prevY) {
+    prevX = prevX || 0;
+    prevY = prevY || 0;
+
+    this.pdf.internal.out(
+      getHorizontalCoordinateString(x + prevX) +
+        " " +
+        getVerticalCoordinateString(y + prevY) +
+        " l"
+    );
+  };
+
+  var drawLines = function(lines, x, y) {
+    return this.pdf.lines(lines, x, y, null, null);
+  };
+
+  var drawCurve = function(x, y, x1, y1, x2, y2, x3, y3) {
+    this.pdf.internal.out(
+      [
+        f2$1(getHorizontalCoordinate(x1 + x)),
+        f2$1(getVerticalCoordinate(y1 + y)),
+        f2$1(getHorizontalCoordinate(x2 + x)),
+        f2$1(getVerticalCoordinate(y2 + y)),
+        f2$1(getHorizontalCoordinate(x3 + x)),
+        f2$1(getVerticalCoordinate(y3 + y)),
+        "c"
+      ].join(" ")
+    );
+  };
+
+  /**
+   * Return a array of objects that represent bezier curves which approximate the circular arc centered at the origin, from startAngle to endAngle (radians) with the specified radius.
+   *
+   * Each bezier curve is an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.
+   * @function createArc
+   */
+  var createArc = function(radius, startAngle, endAngle, anticlockwise) {
+    var EPSILON = 0.00001; // Roughly 1/1000th of a degree, see below
+    var twoPi = Math.PI * 2;
+    var halfPi = Math.PI / 2.0;
+
+    while (startAngle > endAngle) {
+      startAngle = startAngle - twoPi;
+    }
+    var totalAngle = Math.abs(endAngle - startAngle);
+    if (totalAngle < twoPi) {
+      if (anticlockwise) {
+        totalAngle = twoPi - totalAngle;
+      }
+    }
+
+    // Compute the sequence of arc curves, up to PI/2 at a time.
+    var curves = [];
+
+    // clockwise or counterclockwise
+    var sgn = anticlockwise ? -1 : +1;
+
+    var a1 = startAngle;
+    for (; totalAngle > EPSILON; ) {
+      var remain = sgn * Math.min(totalAngle, halfPi);
+      var a2 = a1 + remain;
+      curves.push(createSmallArc.call(this, radius, a1, a2));
+      totalAngle -= Math.abs(a2 - a1);
+      a1 = a2;
+    }
+
+    return curves;
+  };
+
+  /**
+   * Cubic bezier approximation of a circular arc centered at the origin, from (radians) a1 to a2, where a2-a1 < pi/2. The arc's radius is r.
+   *
+   * Returns an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.
+   *
+   * This algorithm is based on the approach described in: A. Riškus, "Approximation of a Cubic Bezier Curve by Circular Arcs and Vice Versa," Information Technology and Control, 35(4), 2006 pp. 371-378.
+   */
+  var createSmallArc = function(r, a1, a2) {
+    var a = (a2 - a1) / 2.0;
+
+    var x4 = r * Math.cos(a);
+    var y4 = r * Math.sin(a);
+    var x1 = x4;
+    var y1 = -y4;
+
+    var q1 = x1 * x1 + y1 * y1;
+    var q2 = q1 + x1 * x4 + y1 * y4;
+    var k2 = ((4 / 3) * (Math.sqrt(2 * q1 * q2) - q2)) / (x1 * y4 - y1 * x4);
+
+    var x2 = x1 - k2 * y1;
+    var y2 = y1 + k2 * x1;
+    var x3 = x2;
+    var y3 = -y2;
+
+    var ar = a + a1;
+    var cos_ar = Math.cos(ar);
+    var sin_ar = Math.sin(ar);
+
+    return {
+      x1: r * Math.cos(a1),
+      y1: r * Math.sin(a1),
+      x2: x2 * cos_ar - y2 * sin_ar,
+      y2: x2 * sin_ar + y2 * cos_ar,
+      x3: x3 * cos_ar - y3 * sin_ar,
+      y3: x3 * sin_ar + y3 * cos_ar,
+      x4: r * Math.cos(a2),
+      y4: r * Math.sin(a2)
     };
+  };
 
-    var drawLine = function(x, y, prevX, prevY) {
-      prevX = prevX || 0;
-      prevY = prevY || 0;
+  var rad2deg = function(value) {
+    return (value * 180) / Math.PI;
+  };
 
-      this.pdf.internal.out(
-        getHorizontalCoordinateString(x + prevX) +
-          " " +
-          getVerticalCoordinateString(y + prevY) +
-          " l"
-      );
-    };
+  var getQuadraticCurveBoundary = function(sx, sy, cpx, cpy, ex, ey) {
+    var midX1 = sx + (cpx - sx) * 0.5;
+    var midY1 = sy + (cpy - sy) * 0.5;
+    var midX2 = ex + (cpx - ex) * 0.5;
+    var midY2 = ey + (cpy - ey) * 0.5;
+    var resultX1 = Math.min(sx, ex, midX1, midX2);
+    var resultX2 = Math.max(sx, ex, midX1, midX2);
+    var resultY1 = Math.min(sy, ey, midY1, midY2);
+    var resultY2 = Math.max(sy, ey, midY1, midY2);
+    return new Rectangle(
+      resultX1,
+      resultY1,
+      resultX2 - resultX1,
+      resultY2 - resultY1
+    );
+  };
 
-    var drawLines = function(lines, x, y) {
-      return this.pdf.lines(lines, x, y, null, null);
-    };
+  //De Casteljau algorithm
+  var getBezierCurveBoundary = function(ax, ay, bx, by, cx, cy, dx, dy) {
+    var tobx = bx - ax;
+    var toby = by - ay;
+    var tocx = cx - bx;
+    var tocy = cy - by;
+    var todx = dx - cx;
+    var tody = dy - cy;
+    var precision = 40;
+    var d,
+      i,
+      px,
+      py,
+      qx,
+      qy,
+      rx,
+      ry,
+      tx,
+      ty,
+      sx,
+      sy,
+      x,
+      y,
+      minx,
+      miny,
+      maxx,
+      maxy,
+      toqx,
+      toqy,
+      torx,
+      tory,
+      totx,
+      toty;
+    for (i = 0; i < precision + 1; i++) {
+      d = i / precision;
+      px = ax + d * tobx;
+      py = ay + d * toby;
+      qx = bx + d * tocx;
+      qy = by + d * tocy;
+      rx = cx + d * todx;
+      ry = cy + d * tody;
+      toqx = qx - px;
+      toqy = qy - py;
+      torx = rx - qx;
+      tory = ry - qy;
 
-    var drawCurve = function(x, y, x1, y1, x2, y2, x3, y3) {
-      this.pdf.internal.out(
-        [
-          f2(getHorizontalCoordinate(x1 + x)),
-          f2(getVerticalCoordinate(y1 + y)),
-          f2(getHorizontalCoordinate(x2 + x)),
-          f2(getVerticalCoordinate(y2 + y)),
-          f2(getHorizontalCoordinate(x3 + x)),
-          f2(getVerticalCoordinate(y3 + y)),
-          "c"
-        ].join(" ")
-      );
-    };
+      sx = px + d * toqx;
+      sy = py + d * toqy;
+      tx = qx + d * torx;
+      ty = qy + d * tory;
+      totx = tx - sx;
+      toty = ty - sy;
 
+      x = sx + d * totx;
+      y = sy + d * toty;
+      if (i == 0) {
+        minx = x;
+        miny = y;
+        maxx = x;
+        maxy = y;
+      } else {
+        minx = Math.min(minx, x);
+        miny = Math.min(miny, y);
+        maxx = Math.max(maxx, x);
+        maxy = Math.max(maxy, y);
+      }
+    }
+    return new Rectangle(
+      Math.round(minx),
+      Math.round(miny),
+      Math.round(maxx - minx),
+      Math.round(maxy - miny)
+    );
+  };
+
+  jsPDF.Context2D = Context2D;
+
+  /**
+   * @license
+   * Copyright (c) 2014 Steven Spungin (TwelveTone LLC)  steven@twelvetone.tv
+   *
+   * Licensed under the MIT License.
+   * http://opensource.org/licenses/mit-license
+   */
+  /**
+   * jsPDF Canvas PlugIn
+   * This plugin mimics the HTML5 Canvas
+   *
+   * The goal is to provide a way for current canvas users to print directly to a PDF.
+   * @name canvas
+   * @module
+   */
+
+  /**
+   * @class Canvas
+   * @classdesc A Canvas Wrapper for jsPDF
+   */
+  var Canvas = function(jsPdfInstance, context2d) {
+    Object.defineProperty(this, "pdf", {
+      get: function() {
+        return jsPdfInstance;
+      },
+      set: function(value) {
+        jsPdfInstance = value;
+      }
+    });
+
+    Object.defineProperty(this, "context2d", {
+      get: function() {
+        return context2d || jsPdfInstance.context2d;
+      }
+    });
+
+    var _width = 150;
     /**
-     * Return a array of objects that represent bezier curves which approximate the circular arc centered at the origin, from startAngle to endAngle (radians) with the specified radius.
+     * The height property is a positive integer reflecting the height HTML attribute of the <canvas> element interpreted in CSS pixels. When the attribute is not specified, or if it is set to an invalid value, like a negative, the default value of 150 is used.
+     * This is one of the two properties, the other being width, that controls the size of the canvas.
      *
-     * Each bezier curve is an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.
-     * @function createArc
+     * @name width
      */
-    var createArc = function(radius, startAngle, endAngle, anticlockwise) {
-      var EPSILON = 0.00001; // Roughly 1/1000th of a degree, see below
-      var twoPi = Math.PI * 2;
-      var halfPi = Math.PI / 2.0;
-
-      while (startAngle > endAngle) {
-        startAngle = startAngle - twoPi;
-      }
-      var totalAngle = Math.abs(endAngle - startAngle);
-      if (totalAngle < twoPi) {
-        if (anticlockwise) {
-          totalAngle = twoPi - totalAngle;
-        }
-      }
-
-      // Compute the sequence of arc curves, up to PI/2 at a time.
-      var curves = [];
-
-      // clockwise or counterclockwise
-      var sgn = anticlockwise ? -1 : +1;
-
-      var a1 = startAngle;
-      for (; totalAngle > EPSILON; ) {
-        var remain = sgn * Math.min(totalAngle, halfPi);
-        var a2 = a1 + remain;
-        curves.push(createSmallArc.call(this, radius, a1, a2));
-        totalAngle -= Math.abs(a2 - a1);
-        a1 = a2;
-      }
-
-      return curves;
-    };
-
-    /**
-     * Cubic bezier approximation of a circular arc centered at the origin, from (radians) a1 to a2, where a2-a1 < pi/2. The arc's radius is r.
-     *
-     * Returns an object with four points, where x1,y1 and x4,y4 are the arc's end points and x2,y2 and x3,y3 are the cubic bezier's control points.
-     *
-     * This algorithm is based on the approach described in: A. Riškus, "Approximation of a Cubic Bezier Curve by Circular Arcs and Vice Versa," Information Technology and Control, 35(4), 2006 pp. 371-378.
-     */
-    var createSmallArc = function(r, a1, a2) {
-      var a = (a2 - a1) / 2.0;
-
-      var x4 = r * Math.cos(a);
-      var y4 = r * Math.sin(a);
-      var x1 = x4;
-      var y1 = -y4;
-
-      var q1 = x1 * x1 + y1 * y1;
-      var q2 = q1 + x1 * x4 + y1 * y4;
-      var k2 = ((4 / 3) * (Math.sqrt(2 * q1 * q2) - q2)) / (x1 * y4 - y1 * x4);
-
-      var x2 = x1 - k2 * y1;
-      var y2 = y1 + k2 * x1;
-      var x3 = x2;
-      var y3 = -y2;
-
-      var ar = a + a1;
-      var cos_ar = Math.cos(ar);
-      var sin_ar = Math.sin(ar);
-
-      return {
-        x1: r * Math.cos(a1),
-        y1: r * Math.sin(a1),
-        x2: x2 * cos_ar - y2 * sin_ar,
-        y2: x2 * sin_ar + y2 * cos_ar,
-        x3: x3 * cos_ar - y3 * sin_ar,
-        y3: x3 * sin_ar + y3 * cos_ar,
-        x4: r * Math.cos(a2),
-        y4: r * Math.sin(a2)
-      };
-    };
-
-    var rad2deg = function(value) {
-      return (value * 180) / Math.PI;
-    };
-
-    var getQuadraticCurveBoundary = function(sx, sy, cpx, cpy, ex, ey) {
-      var midX1 = sx + (cpx - sx) * 0.5;
-      var midY1 = sy + (cpy - sy) * 0.5;
-      var midX2 = ex + (cpx - ex) * 0.5;
-      var midY2 = ey + (cpy - ey) * 0.5;
-      var resultX1 = Math.min(sx, ex, midX1, midX2);
-      var resultX2 = Math.max(sx, ex, midX1, midX2);
-      var resultY1 = Math.min(sy, ey, midY1, midY2);
-      var resultY2 = Math.max(sy, ey, midY1, midY2);
-      return new Rectangle(
-        resultX1,
-        resultY1,
-        resultX2 - resultX1,
-        resultY2 - resultY1
-      );
-    };
-
-    //De Casteljau algorithm
-    var getBezierCurveBoundary = function(ax, ay, bx, by, cx, cy, dx, dy) {
-      var tobx = bx - ax;
-      var toby = by - ay;
-      var tocx = cx - bx;
-      var tocy = cy - by;
-      var todx = dx - cx;
-      var tody = dy - cy;
-      var precision = 40;
-      var d,
-        i,
-        px,
-        py,
-        qx,
-        qy,
-        rx,
-        ry,
-        tx,
-        ty,
-        sx,
-        sy,
-        x,
-        y,
-        minx,
-        miny,
-        maxx,
-        maxy,
-        toqx,
-        toqy,
-        torx,
-        tory,
-        totx,
-        toty;
-      for (i = 0; i < precision + 1; i++) {
-        d = i / precision;
-        px = ax + d * tobx;
-        py = ay + d * toby;
-        qx = bx + d * tocx;
-        qy = by + d * tocy;
-        rx = cx + d * todx;
-        ry = cy + d * tody;
-        toqx = qx - px;
-        toqy = qy - py;
-        torx = rx - qx;
-        tory = ry - qy;
-
-        sx = px + d * toqx;
-        sy = py + d * toqy;
-        tx = qx + d * torx;
-        ty = qy + d * tory;
-        totx = tx - sx;
-        toty = ty - sy;
-
-        x = sx + d * totx;
-        y = sy + d * toty;
-        if (i == 0) {
-          minx = x;
-          miny = y;
-          maxx = x;
-          maxy = y;
+    Object.defineProperty(this, "width", {
+      get: function() {
+        return _width;
+      },
+      set: function(value) {
+        if (isNaN(value) || Number.isInteger(value) === false || value < 0) {
+          _width = 150;
         } else {
-          minx = Math.min(minx, x);
-          miny = Math.min(miny, y);
-          maxx = Math.max(maxx, x);
-          maxy = Math.max(maxy, y);
+          _width = value;
+        }
+        if (this.getContext("2d").pageWrapXEnabled) {
+          this.getContext("2d").pageWrapX = _width + 1;
         }
       }
-      return new Rectangle(
-        Math.round(minx),
-        Math.round(miny),
-        Math.round(maxx - minx),
-        Math.round(maxy - miny)
+    });
+
+    var _height = 300;
+    /**
+     * The width property is a positive integer reflecting the width HTML attribute of the <canvas> element interpreted in CSS pixels. When the attribute is not specified, or if it is set to an invalid value, like a negative, the default value of 300 is used.
+     * This is one of the two properties, the other being height, that controls the size of the canvas.
+     *
+     * @name height
+     */
+    Object.defineProperty(this, "height", {
+      get: function() {
+        return _height;
+      },
+      set: function(value) {
+        if (isNaN(value) || Number.isInteger(value) === false || value < 0) {
+          _height = 300;
+        } else {
+          _height = value;
+        }
+        if (this.getContext("2d").pageWrapYEnabled) {
+          this.getContext("2d").pageWrapY = _height + 1;
+        }
+      }
+    });
+
+    var _childNodes = [];
+    Object.defineProperty(this, "childNodes", {
+      get: function() {
+        return _childNodes;
+      },
+      set: function(value) {
+        _childNodes = value;
+      }
+    });
+
+    var _style = {};
+    Object.defineProperty(this, "style", {
+      get: function() {
+        return _style;
+      },
+      set: function(value) {
+        _style = value;
+      }
+    });
+
+    Object.defineProperty(this, "parentNode", {});
+  };
+
+  /**
+   * The getContext() method returns a drawing context on the canvas, or null if the context identifier is not supported.
+   *
+   * @name getContext
+   * @function
+   * @param {string} contextType Is a String containing the context identifier defining the drawing context associated to the canvas. Possible value is "2d", leading to the creation of a Context2D object representing a two-dimensional rendering context.
+   * @param {object} contextAttributes
+   */
+  Canvas.prototype.getContext = function(contextType, contextAttributes) {
+    contextType = contextType || "2d";
+    var key;
+
+    if (contextType !== "2d") {
+      return null;
+    }
+
+    for (key in contextAttributes) {
+      if (this.context2d.hasOwnProperty(key)) {
+        this.context2d[key] = contextAttributes[key];
+      }
+    }
+    this.context2d._canvas = this;
+
+    return this.context2d;
+  };
+
+  /**
+   * The toDataURL() method is just a stub to throw an error if accidently called.
+   *
+   * @name toDataURL
+   * @function
+   */
+  Canvas.prototype.toDataURL = function() {
+    throw new Error("toDataURL is not implemented.");
+  };
+
+  jsPDF.API.events.push([
+    "initialized",
+    function() {
+      this.canvas = new Canvas(this);
+    }
+  ]);
+
+  jsPDF.Canvas = Canvas;
+
+  /**
+   * @license
+   * ====================================================================
+   * Copyright (c) 2013 Youssef Beddad, youssef.beddad@gmail.com
+   *               2013 Eduardo Menezes de Morais, eduardo.morais@usp.br
+   *               2013 Lee Driscoll, https://github.com/lsdriscoll
+   *               2014 Juan Pablo Gaviria, https://github.com/juanpgaviria
+   *               2014 James Hall, james@parall.ax
+   *               2014 Diego Casorran, https://github.com/diegocr
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining
+   * a copy of this software and associated documentation files (the
+   * "Software"), to deal in the Software without restriction, including
+   * without limitation the rights to use, copy, modify, merge, publish,
+   * distribute, sublicense, and/or sell copies of the Software, and to
+   * permit persons to whom the Software is furnished to do so, subject to
+   * the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be
+   * included in all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+   * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+   * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+   * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   * ====================================================================
+   */
+
+  /**
+   * @name cell
+   * @module
+   */
+  (function(jsPDFAPI) {
+
+    var NO_MARGINS = { left: 0, top: 0, bottom: 0, right: 0 };
+
+    var px2pt = (0.264583 * 72) / 25.4;
+    var printingHeaderRow = false;
+
+    var _initialize = function() {
+      if (typeof this.internal.__cell__ === "undefined") {
+        this.internal.__cell__ = {};
+        this.internal.__cell__.padding = 3;
+        this.internal.__cell__.headerFunction = undefined;
+        this.internal.__cell__.margins = Object.assign({}, NO_MARGINS);
+        this.internal.__cell__.margins.width = this.getPageWidth();
+        _reset.call(this);
+      }
+    };
+
+    var _reset = function() {
+      this.internal.__cell__.lastCell = new Cell();
+      this.internal.__cell__.pages = 1;
+    };
+
+    var Cell = function() {
+      var _x = arguments[0];
+      Object.defineProperty(this, "x", {
+        enumerable: true,
+        get: function() {
+          return _x;
+        },
+        set: function(value) {
+          _x = value;
+        }
+      });
+      var _y = arguments[1];
+      Object.defineProperty(this, "y", {
+        enumerable: true,
+        get: function() {
+          return _y;
+        },
+        set: function(value) {
+          _y = value;
+        }
+      });
+      var _width = arguments[2];
+      Object.defineProperty(this, "width", {
+        enumerable: true,
+        get: function() {
+          return _width;
+        },
+        set: function(value) {
+          _width = value;
+        }
+      });
+      var _height = arguments[3];
+      Object.defineProperty(this, "height", {
+        enumerable: true,
+        get: function() {
+          return _height;
+        },
+        set: function(value) {
+          _height = value;
+        }
+      });
+      var _text = arguments[4];
+      Object.defineProperty(this, "text", {
+        enumerable: true,
+        get: function() {
+          return _text;
+        },
+        set: function(value) {
+          _text = value;
+        }
+      });
+      var _lineNumber = arguments[5];
+      Object.defineProperty(this, "lineNumber", {
+        enumerable: true,
+        get: function() {
+          return _lineNumber;
+        },
+        set: function(value) {
+          _lineNumber = value;
+        }
+      });
+      var _align = arguments[6];
+      Object.defineProperty(this, "align", {
+        enumerable: true,
+        get: function() {
+          return _align;
+        },
+        set: function(value) {
+          _align = value;
+        }
+      });
+
+      return this;
+    };
+
+    Cell.prototype.clone = function() {
+      return new Cell(
+        this.x,
+        this.y,
+        this.width,
+        this.height,
+        this.text,
+        this.lineNumber,
+        this.align
       );
+    };
+
+    Cell.prototype.toArray = function() {
+      return [
+        this.x,
+        this.y,
+        this.width,
+        this.height,
+        this.text,
+        this.lineNumber,
+        this.align
+      ];
+    };
+
+    /**
+     * @name setHeaderFunction
+     * @function
+     * @param {function} func
+     */
+    jsPDFAPI.setHeaderFunction = function(func) {
+      _initialize.call(this);
+      this.internal.__cell__.headerFunction =
+        typeof func === "function" ? func : undefined;
+      return this;
+    };
+
+    /**
+     * @name getTextDimensions
+     * @function
+     * @param {string} txt
+     * @returns {Object} dimensions
+     */
+    jsPDFAPI.getTextDimensions = function(text, options) {
+      _initialize.call(this);
+      options = options || {};
+      var fontSize = options.fontSize || this.getFontSize();
+      var font = options.font || this.getFont();
+      var scaleFactor = options.scaleFactor || this.internal.scaleFactor;
+      var width = 0;
+      var amountOfLines = 0;
+      var height = 0;
+      var tempWidth = 0;
+      var scope = this;
+
+      if (!Array.isArray(text) && typeof text !== "string") {
+        if (typeof text === "number") {
+          text = String(text);
+        } else {
+          throw new Error(
+            "getTextDimensions expects text-parameter to be of type String or type Number or an Array of Strings."
+          );
+        }
+      }
+
+      const maxWidth = options.maxWidth;
+      if (maxWidth > 0) {
+        if (typeof text === "string") {
+          text = this.splitTextToSize(text, maxWidth);
+        } else if (Object.prototype.toString.call(text) === "[object Array]") {
+          text = text.reduce(function(acc, textLine) {
+            return acc.concat(scope.splitTextToSize(textLine, maxWidth));
+          }, []);
+        }
+      } else {
+        // Without the else clause, it will not work if you do not pass along maxWidth
+        text = Array.isArray(text) ? text : [text];
+      }
+
+      for (var i = 0; i < text.length; i++) {
+        tempWidth = this.getStringUnitWidth(text[i], { font: font }) * fontSize;
+        if (width < tempWidth) {
+          width = tempWidth;
+        }
+      }
+
+      if (width !== 0) {
+        amountOfLines = text.length;
+      }
+
+      width = width / scaleFactor;
+      height = Math.max(
+        (amountOfLines * fontSize * this.getLineHeightFactor() -
+          fontSize * (this.getLineHeightFactor() - 1)) /
+          scaleFactor,
+        0
+      );
+      return { w: width, h: height };
+    };
+
+    /**
+     * @name cellAddPage
+     * @function
+     */
+    jsPDFAPI.cellAddPage = function() {
+      _initialize.call(this);
+
+      this.addPage();
+
+      var margins = this.internal.__cell__.margins || NO_MARGINS;
+      this.internal.__cell__.lastCell = new Cell(
+        margins.left,
+        margins.top,
+        undefined,
+        undefined
+      );
+      this.internal.__cell__.pages += 1;
+
+      return this;
+    };
+
+    /**
+     * @name cell
+     * @function
+     * @param {number} x
+     * @param {number} y
+     * @param {number} width
+     * @param {number} height
+     * @param {string} text
+     * @param {number} lineNumber lineNumber
+     * @param {string} align
+     * @return {jsPDF} jsPDF-instance
+     */
+    var cell = (jsPDFAPI.cell = function() {
+      var currentCell;
+
+      if (arguments[0] instanceof Cell) {
+        currentCell = arguments[0];
+      } else {
+        currentCell = new Cell(
+          arguments[0],
+          arguments[1],
+          arguments[2],
+          arguments[3],
+          arguments[4],
+          arguments[5]
+        );
+      }
+      _initialize.call(this);
+      var lastCell = this.internal.__cell__.lastCell;
+      var padding = this.internal.__cell__.padding;
+      var margins = this.internal.__cell__.margins || NO_MARGINS;
+      var tableHeaderRow = this.internal.__cell__.tableHeaderRow;
+      var printHeaders = this.internal.__cell__.printHeaders;
+      // If this is not the first cell, we must change its position
+      if (typeof lastCell.lineNumber !== "undefined") {
+        if (lastCell.lineNumber === currentCell.lineNumber) {
+          //Same line
+          currentCell.x = (lastCell.x || 0) + (lastCell.width || 0);
+          currentCell.y = lastCell.y || 0;
+        } else {
+          //New line
+          if (
+            lastCell.y + lastCell.height + currentCell.height + margins.bottom >
+            this.getPageHeight()
+          ) {
+            this.cellAddPage();
+            currentCell.y = margins.top;
+            if (printHeaders && tableHeaderRow) {
+              this.printHeaderRow(currentCell.lineNumber, true);
+              currentCell.y += tableHeaderRow[0].height;
+            }
+          } else {
+            currentCell.y = lastCell.y + lastCell.height || currentCell.y;
+          }
+        }
+      }
+
+      if (typeof currentCell.text[0] !== "undefined") {
+        this.rect(
+          currentCell.x,
+          currentCell.y,
+          currentCell.width,
+          currentCell.height,
+          printingHeaderRow === true ? "FD" : undefined
+        );
+        if (currentCell.align === "right") {
+          this.text(
+            currentCell.text,
+            currentCell.x + currentCell.width - padding,
+            currentCell.y + padding,
+            { align: "right", baseline: "top" }
+          );
+        } else if (currentCell.align === "center") {
+          this.text(
+            currentCell.text,
+            currentCell.x + currentCell.width / 2,
+            currentCell.y + padding,
+            {
+              align: "center",
+              baseline: "top",
+              maxWidth: currentCell.width - padding - padding
+            }
+          );
+        } else {
+          this.text(
+            currentCell.text,
+            currentCell.x + padding,
+            currentCell.y + padding,
+            {
+              align: "left",
+              baseline: "top",
+              maxWidth: currentCell.width - padding - padding
+            }
+          );
+        }
+      }
+      this.internal.__cell__.lastCell = currentCell;
+      return this;
+    });
+
+    /**
+       * Create a table from a set of data.
+       * @name table
+       * @function
+       * @param {Integer} [x] : left-position for top-left corner of table
+       * @param {Integer} [y] top-position for top-left corner of table
+       * @param {Object[]} [data] An array of objects containing key-value pairs corresponding to a row of data.
+       * @param {String[]} [headers] Omit or null to auto-generate headers at a performance cost
+
+       * @param {Object} [config.printHeaders] True to print column headers at the top of every page
+       * @param {Object} [config.autoSize] True to dynamically set the column widths to match the widest cell value
+       * @param {Object} [config.margins] margin values for left, top, bottom, and width
+       * @param {Object} [config.fontSize] Integer fontSize to use (optional)
+       * @param {Object} [config.padding] cell-padding in pt to use (optional)
+       * @param {Object} [config.headerBackgroundColor] default is #c8c8c8 (optional)
+       * @returns {jsPDF} jsPDF-instance
+       */
+
+    jsPDFAPI.table = function(x, y, data, headers, config) {
+      _initialize.call(this);
+      if (!data) {
+        throw new Error("No data for PDF table.");
+      }
+
+      config = config || {};
+
+      var headerNames = [],
+        headerLabels = [],
+        headerAligns = [],
+        i,
+        columnMatrix = {},
+        columnWidths = {},
+        column,
+        columnMinWidths = [],
+        j,
+        tableHeaderConfigs = [],
+        //set up defaults. If a value is provided in config, defaults will be overwritten:
+        autoSize = config.autoSize || false,
+        printHeaders = config.printHeaders === false ? false : true,
+        fontSize =
+          config.css && typeof config.css["font-size"] !== "undefined"
+            ? config.css["font-size"] * 16
+            : config.fontSize || 12,
+        margins =
+          config.margins ||
+          Object.assign({ width: this.getPageWidth() }, NO_MARGINS),
+        padding = typeof config.padding === "number" ? config.padding : 3,
+        headerBackgroundColor = config.headerBackgroundColor || "#c8c8c8";
+
+      _reset.call(this);
+
+      this.internal.__cell__.printHeaders = printHeaders;
+      this.internal.__cell__.margins = margins;
+      this.internal.__cell__.table_font_size = fontSize;
+      this.internal.__cell__.padding = padding;
+      this.internal.__cell__.headerBackgroundColor = headerBackgroundColor;
+      this.setFontSize(fontSize);
+
+      // Set header values
+      if (headers === undefined || headers === null) {
+        // No headers defined so we derive from data
+        headerNames = Object.keys(data[0]);
+        headerLabels = headerNames;
+        headerAligns = headerNames.map(function() {
+          return "left";
+        });
+      } else if (Array.isArray(headers) && typeof headers[0] === "object") {
+        headerNames = headers.map(function(header) {
+          return header.name;
+        });
+        headerLabels = headers.map(function(header) {
+          return header.prompt || header.name || "";
+        });
+        headerAligns = headers.map(function(header) {
+          return header.align || "left";
+        });
+        // Split header configs into names and prompts
+        for (i = 0; i < headers.length; i += 1) {
+          columnWidths[headers[i].name] = headers[i].width * px2pt;
+        }
+      } else if (Array.isArray(headers) && typeof headers[0] === "string") {
+        headerNames = headers;
+        headerLabels = headerNames;
+        headerAligns = headerNames.map(function() {
+          return "left";
+        });
+      }
+
+      if (autoSize || (Array.isArray(headers) && typeof headers[0] === "string")) {
+        var headerName;
+        for (i = 0; i < headerNames.length; i += 1) {
+          headerName = headerNames[i];
+
+          // Create a matrix of columns e.g., {column_title: [row1_Record, row2_Record]}
+
+          columnMatrix[headerName] = data.map(function(rec) {
+            return rec[headerName];
+          });
+
+          // get header width
+          this.setFont(undefined, "bold");
+          columnMinWidths.push(
+            this.getTextDimensions(headerLabels[i], {
+              fontSize: this.internal.__cell__.table_font_size,
+              scaleFactor: this.internal.scaleFactor
+            }).w
+          );
+          column = columnMatrix[headerName];
+
+          // get cell widths
+          this.setFont(undefined, "normal");
+          for (j = 0; j < column.length; j += 1) {
+            columnMinWidths.push(
+              this.getTextDimensions(column[j], {
+                fontSize: this.internal.__cell__.table_font_size,
+                scaleFactor: this.internal.scaleFactor
+              }).w
+            );
+          }
+
+          // get final column width
+          columnWidths[headerName] =
+            Math.max.apply(null, columnMinWidths) + padding + padding;
+
+          //have to reset
+          columnMinWidths = [];
+        }
+      }
+
+      // -- Construct the table
+
+      if (printHeaders) {
+        var row = {};
+        for (i = 0; i < headerNames.length; i += 1) {
+          row[headerNames[i]] = {};
+          row[headerNames[i]].text = headerLabels[i];
+          row[headerNames[i]].align = headerAligns[i];
+        }
+
+        var rowHeight = calculateLineHeight.call(this, row, columnWidths);
+
+        // Construct the header row
+        tableHeaderConfigs = headerNames.map(function(value) {
+          return new Cell(
+            x,
+            y,
+            columnWidths[value],
+            rowHeight,
+            row[value].text,
+            undefined,
+            row[value].align
+          );
+        });
+
+        // Store the table header config
+        this.setTableHeaderRow(tableHeaderConfigs);
+
+        // Print the header for the start of the table
+        this.printHeaderRow(1, false);
+      }
+
+      // Construct the data rows
+
+      var align = headers.reduce(function(pv, cv) {
+        pv[cv.name] = cv.align;
+        return pv;
+      }, {});
+      for (i = 0; i < data.length; i += 1) {
+        var lineHeight = calculateLineHeight.call(this, data[i], columnWidths);
+
+        for (j = 0; j < headerNames.length; j += 1) {
+          cell.call(
+            this,
+            new Cell(
+              x,
+              y,
+              columnWidths[headerNames[j]],
+              lineHeight,
+              data[i][headerNames[j]],
+              i + 2,
+              align[headerNames[j]]
+            )
+          );
+        }
+      }
+      this.internal.__cell__.table_x = x;
+      this.internal.__cell__.table_y = y;
+      return this;
+    };
+
+    /**
+     * Calculate the height for containing the highest column
+     *
+     * @name calculateLineHeight
+     * @function
+     * @param {Object[]} model is the line of data we want to calculate the height of
+     * @param {Integer[]} columnWidths is size of each column
+     * @returns {number} lineHeight
+     * @private
+     */
+    var calculateLineHeight = function calculateLineHeight(model, columnWidths) {
+      var padding = this.internal.__cell__.padding;
+      var fontSize = this.internal.__cell__.table_font_size;
+      var scaleFactor = this.internal.scaleFactor;
+
+      return Object.keys(model)
+        .map(function(key) {
+          var value = model[key];
+          return this.splitTextToSize(
+            value.hasOwnProperty("text") ? value.text : value,
+            columnWidths[key] - padding - padding
+          );
+        }, this)
+        .map(function(value) {
+          return (
+            (this.getLineHeightFactor() * value.length * fontSize) / scaleFactor +
+            padding +
+            padding
+          );
+        }, this)
+        .reduce(function(pv, cv) {
+          return Math.max(pv, cv);
+        }, 0);
+    };
+
+    /**
+     * Store the config for outputting a table header
+     *
+     * @name setTableHeaderRow
+     * @function
+     * @param {Object[]} config
+     * An array of cell configs that would define a header row: Each config matches the config used by jsPDFAPI.cell
+     * except the lineNumber parameter is excluded
+     */
+    jsPDFAPI.setTableHeaderRow = function(config) {
+      _initialize.call(this);
+      this.internal.__cell__.tableHeaderRow = config;
+    };
+
+    /**
+     * Output the store header row
+     *
+     * @name printHeaderRow
+     * @function
+     * @param {number} lineNumber The line number to output the header at
+     * @param {boolean} new_page
+     */
+    jsPDFAPI.printHeaderRow = function(lineNumber, new_page) {
+      _initialize.call(this);
+      if (!this.internal.__cell__.tableHeaderRow) {
+        throw new Error("Property tableHeaderRow does not exist.");
+      }
+
+      var tableHeaderCell;
+
+      printingHeaderRow = true;
+      if (typeof this.internal.__cell__.headerFunction === "function") {
+        var position = this.internal.__cell__.headerFunction(
+          this,
+          this.internal.__cell__.pages
+        );
+        this.internal.__cell__.lastCell = new Cell(
+          position[0],
+          position[1],
+          position[2],
+          position[3],
+          undefined,
+          -1
+        );
+      }
+      this.setFont(undefined, "bold");
+
+      var tempHeaderConf = [];
+      for (var i = 0; i < this.internal.__cell__.tableHeaderRow.length; i += 1) {
+        tableHeaderCell = this.internal.__cell__.tableHeaderRow[i].clone();
+        if (new_page) {
+          tableHeaderCell.y = this.internal.__cell__.margins.top || 0;
+          tempHeaderConf.push(tableHeaderCell);
+        }
+        tableHeaderCell.lineNumber = lineNumber;
+        this.setFillColor(this.internal.__cell__.headerBackgroundColor);
+        cell.call(this, tableHeaderCell);
+      }
+      if (tempHeaderConf.length > 0) {
+        this.setTableHeaderRow(tempHeaderConf);
+      }
+      this.setFont(undefined, "normal");
+      printingHeaderRow = false;
     };
   })(jsPDF.API);
 
@@ -16365,7 +16346,6 @@
    * @module
    */
   (function(jsPDFAPI) {
-
     function loadHtml2Canvas() {
       return (function() {
         if (globalObject["html2canvas"]) {
@@ -16761,12 +16741,24 @@
       return this.thenList(prereqs)
         .then(loadHtml2Canvas)
         .then(function toContext2d_main(html2canvas) {
-          // Handle old-fashioned 'onrendered' argument.
-
           var pdf = this.opt.jsPDF;
           var fontFaces = this.opt.fontFaces;
+
+          var paging = this.opt.paging;
+          var context2d = paging ? new Context2D(pdf) : pdf.context2d;
+          var pageInfo = pdf.internal.getCurrentPageInfo();
+
+          context2d.autoPaging = paging !== "none";
+          context2d.startPage = paging ? pageInfo.pageNumber : 1;
+          context2d.posX = this.opt.x;
+          context2d.posY = this.opt.y;
+          context2d.fontFaces = fontFaces;
+
+          var canvas = paging ? new Canvas(pdf, context2d) : pdf.canvas;
+
           var options = Object.assign(
             {
+              canvas: canvas,
               async: true,
               allowTaint: true,
               scale: 1,
@@ -16783,11 +16775,6 @@
             this.opt.html2canvas
           );
           delete options.onrendered;
-
-          pdf.context2d.autoPaging = true;
-          pdf.context2d.posX = this.opt.x;
-          pdf.context2d.posY = this.opt.y;
-          pdf.context2d.fontFaces = fontFaces;
 
           if (fontFaces) {
             for (var i = 0; i < fontFaces.length; ++i) {
@@ -17342,6 +17329,7 @@
      * @param {Object} [options] Collection of settings
      * @param {function} [options.callback] The mandatory callback-function gets as first parameter the current jsPDF instance
      * @param {number|array} [options.margin] Array of margins [left, bottom, right, top]
+     * @param {string} [options.paging] How jsPDF will handle paging. Possible values are "auto" and "none".
      * @param {string} [options.filename] name of the file
      * @param {HTMLOptionImage} [options.image] image settings when converting HTML to image
      * @param {Html2CanvasOptions} [options.html2canvas] html2canvas options
@@ -17366,7 +17354,6 @@
       options = options || {};
       options.callback = options.callback || function() {};
       options.html2canvas = options.html2canvas || {};
-      options.html2canvas.canvas = options.html2canvas.canvas || this.canvas;
       options.jsPDF = options.jsPDF || this;
       options.fontFaces = options.fontFaces
         ? options.fontFaces.map(normalizeFontFace)
