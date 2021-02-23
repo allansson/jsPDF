@@ -1,8 +1,8 @@
 /* global describe, it, jsPDF, comparePdf */
 
-const render = (markup, opts = {}) =>
+const render = (markup, opts = {}, doc) =>
   new Promise(resolve => {
-    const doc = jsPDF({ floatPrecision: 2 });
+    doc = doc || new jsPDF({ floatPrecision: 2 });
 
     doc.html(markup, { ...opts, callback: resolve });
   });
@@ -153,5 +153,102 @@ describe("Module: html", function() {
     );
 
     comparePdf(doc.output(), "html-font-faces.pdf", "html");
+  });
+
+  describe("paging", () => {
+    it('handles paging automatically when paging is set to "auto"', async () => {
+      const doc = await render(
+        `
+        <div style="width: 200px; height: 500px">First</div>
+        <div style="width: 200px; height: 500px">Second</div>
+        <div style="width: 200px; height: 500px">Third</div>
+        <div style="width: 200px; height: 500px">Fourth</div>
+      `,
+        {
+          paging: "auto"
+        }
+      );
+
+      comparePdf(doc.output(), "html-paging-auto.pdf", "html");
+    });
+
+    it('starts from current page and automatically pages when paging is set to "auto"', async () => {
+      const doc = new jsPDF({ floatPrecision: 2 }).addPage().addPage();
+
+      await render(
+        `
+        <div>
+        <div style="width: 200px; height: 500px">First</div>
+        <div style="width: 200px; height: 500px">Second</div>
+        <div style="width: 200px; height: 500px">Third</div>
+        <div style="width: 200px; height: 500px">Fourth</div>
+        </div>
+      `,
+        {
+          paging: "auto"
+        },
+        doc
+      );
+
+      comparePdf(doc.output(), "html-paging-auto-from-current.pdf", "html");
+    });
+
+    it('does not page when paging is set to "manual"', async () => {
+      const doc = await render(
+        `
+        <div style="height: 500px">First</div>
+        <div style="height: 500px">Second</div>
+        <div style="height: 500px">Third</div>
+        <div style="height: 500px">Fourth</div>
+      `,
+        {
+          paging: "none"
+        }
+      );
+
+      expect(doc.internal.getNumberOfPages()).toBe(1);
+      comparePdf(doc.output(), "html-paging-manual.pdf", "html");
+    });
+
+    it('starts drawning from current when paging is set to "manual"', async () => {
+      const doc = new jsPDF({ floatPrecision: 2 });
+
+      await render(
+        `
+        <div>First</div>
+      `,
+        {
+          paging: "none"
+        },
+        doc
+      );
+
+      doc.addPage();
+
+      await render(
+        `
+        <div>Second</div>
+      `,
+        {
+          paging: "none"
+        },
+        doc
+      );
+
+      doc.addPage();
+
+      await render(
+        `
+        <div>Third</div>
+      `,
+        {
+          paging: "none"
+        },
+        doc
+      );
+
+      expect(doc.internal.getNumberOfPages()).toBe(3);
+      comparePdf(doc.output(), "html-paging-adding-pages.pdf", "html");
+    });
   });
 });

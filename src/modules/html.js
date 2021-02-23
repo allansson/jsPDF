@@ -10,6 +10,8 @@
 import { jsPDF } from "../jspdf.js";
 import { normalizeFontFace } from "../libs/fontFace.js";
 import { globalObject } from "../libs/globalObject.js";
+import { Canvas } from "./canvas.js";
+import { Context2D } from "./context2d.js";
 
 /**
  * jsPDF html PlugIn
@@ -18,8 +20,6 @@ import { globalObject } from "../libs/globalObject.js";
  * @module
  */
 (function(jsPDFAPI) {
-  "use strict";
-
   function loadHtml2Canvas() {
     return (function() {
       if (globalObject["html2canvas"]) {
@@ -425,12 +425,24 @@ import { globalObject } from "../libs/globalObject.js";
     return this.thenList(prereqs)
       .then(loadHtml2Canvas)
       .then(function toContext2d_main(html2canvas) {
-        // Handle old-fashioned 'onrendered' argument.
-
         var pdf = this.opt.jsPDF;
         var fontFaces = this.opt.fontFaces;
+
+        var paging = this.opt.paging;
+        var context2d = paging ? new Context2D(pdf) : pdf.context2d;
+        var pageInfo = pdf.internal.getCurrentPageInfo();
+
+        context2d.autoPaging = paging !== "none";
+        context2d.startPage = paging ? pageInfo.pageNumber : 1;
+        context2d.posX = this.opt.x;
+        context2d.posY = this.opt.y;
+        context2d.fontFaces = fontFaces;
+
+        var canvas = paging ? new Canvas(pdf, context2d) : pdf.canvas;
+
         var options = Object.assign(
           {
+            canvas: canvas,
             async: true,
             allowTaint: true,
             scale: 1,
@@ -447,11 +459,6 @@ import { globalObject } from "../libs/globalObject.js";
           this.opt.html2canvas
         );
         delete options.onrendered;
-
-        pdf.context2d.autoPaging = true;
-        pdf.context2d.posX = this.opt.x;
-        pdf.context2d.posY = this.opt.y;
-        pdf.context2d.fontFaces = fontFaces;
 
         if (fontFaces) {
           for (var i = 0; i < fontFaces.length; ++i) {
@@ -1006,6 +1013,7 @@ import { globalObject } from "../libs/globalObject.js";
    * @param {Object} [options] Collection of settings
    * @param {function} [options.callback] The mandatory callback-function gets as first parameter the current jsPDF instance
    * @param {number|array} [options.margin] Array of margins [left, bottom, right, top]
+   * @param {string} [options.paging] How jsPDF will handle paging. Possible values are "auto" and "none".
    * @param {string} [options.filename] name of the file
    * @param {HTMLOptionImage} [options.image] image settings when converting HTML to image
    * @param {Html2CanvasOptions} [options.html2canvas] html2canvas options
@@ -1031,7 +1039,6 @@ import { globalObject } from "../libs/globalObject.js";
     options = options || {};
     options.callback = options.callback || function() {};
     options.html2canvas = options.html2canvas || {};
-    options.html2canvas.canvas = options.html2canvas.canvas || this.canvas;
     options.jsPDF = options.jsPDF || this;
     options.fontFaces = options.fontFaces
       ? options.fontFaces.map(normalizeFontFace)

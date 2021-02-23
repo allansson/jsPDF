@@ -229,6 +229,7 @@ declare module "jspdf" {
     jsPDF?: jsPDF;
     x?: number;
     y?: number;
+    paging?: "auto" | "none";
     fontFaces?: HTMLFontFace[];
   }
 
